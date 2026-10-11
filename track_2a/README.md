@@ -1,0 +1,104 @@
+# Booklet NLI: claim checking over Swiss voting booklets with Apertus
+
+**Hack Apertus Online 2026, Track 2A, OST challenge:** *Multilingual Natural Language Inference
+over Swiss Official Voting Booklets.*
+
+Give it an official federal voting booklet (PDF, German, French or Italian) and a claim in any of
+the three languages. It answers **entailment (0)**, **neutral (1)** or **contradiction (2)**, and
+shows the booklet passages (with page numbers) the answer rests on.
+
+Apertus is the only model that makes the decision. A small multilingual embedding model picks
+which passages Apertus gets to read (see [Models](#models)).
+
+## How it works
+
+```
+booklet PDF ──► passages (page + outline section) ──► top-k retrieval (cross-lingual) ──┐
+claim ─────────────────────────────────────────────────────────────────────────────────┴─► Apertus ──► {label, evidence, reason}
+```
+
+1. **Passages.** PyMuPDF splits the booklet into passages of at most ~900 characters. Each one
+   keeps its page number and the PDF outline path (proposal › part › subsection). Words broken
+   across lines are rejoined.
+2. **Context.** `--mode rag` (default) gives Apertus only the `k` passages closest to the claim.
+   `--mode full` gives it the whole booklet, which is the baseline the challenge asks for.
+3. **Verdict.** Apertus returns JSON (`reason`, `evidence` passage ids, `label`). Where the
+   server supports it, the JSON shape is enforced with structured output.
+
+Every prediction reports prompt tokens, completion tokens and wall time, so accuracy and cost can
+be compared directly.
+
+## Quick start
+
+```bash
+cp .env.example .env   # fill in LLM_BASE_URL and LLM_API_KEY, then export them
+uv sync
+uv run booklet-nli predict \
+  --booklet https://www.bk.admin.ch/dam/de/sd-web/UxUxfYD5ma0h/2021-06-13_erlaeuterungen_des_bundesrates.pdf \
+  --claim "Le Conseil fédéral recommande de rejeter l'initiative sur l'eau potable."
+```
+
+### CLI
+
+| Command | What it does |
+|---|---|
+| `booklet-nli predict --booklet <pdf/url> --claim "..."` | One verdict as JSON |
+| `booklet-nli batch --input claims.jsonl --output preds.jsonl` | Rows with `booklet_url` and `claim` |
+| `booklet-nli eval --split test --limit 60 --out runs/x` | Macro-F1, per-language scores, evidence hits, tokens, latency. Resumable |
+| `booklet-nli retrieval --split dev` | Retrieval recall@k against the annotated reference passage. CPU only, no LLM |
+
+Options: `--mode rag|full`, `--k 8`, `--embedder <fastembed model>`.
+
+### With Docker (what judges run)
+
+```bash
+export LLM_NAME=swiss-ai/Apertus-v1.5-8B LLM_BASE_URL=... LLM_API_KEY=...
+make run                      # balanced 60-claim sample of the test split
+make run LIMIT=976            # the whole test split
+make predict BOOKLET=<url> CLAIM="..."
+make batch INPUT=data/claims.jsonl OUTPUT=runs/preds.jsonl
+```
+
+## Serving Apertus
+
+Any OpenAI-compatible endpoint works, configured through `LLM_NAME`, `LLM_BASE_URL` and
+`LLM_API_KEY`.
+
+- **Modal (used for our results).** `modal/serve_apertus.py` runs the official
+  `swiss-ai/Apertus-v1.5-8B` weights in swiss-ai's own vLLM image on one L40S. It scales to zero
+  after 5 idle minutes. Needs the Modal secrets `huggingface-secret` (`HF_TOKEN`) and
+  `apertus-nli-api-key` (`LLM_API_KEY`).
+  ```bash
+  make modal-deploy   # prints https://<workspace>--apertus-nli-serve.modal.run
+  export LLM_BASE_URL=https://<workspace>--apertus-nli-serve.modal.run/v1
+  ```
+- **Local (laptop).** A community 4-bit GGUF of the same model runs in Ollama. From inside Docker,
+  use `LLM_BASE_URL=http://host.docker.internal:11434/v1`.
+
+## Models
+
+| Role | Model | Where |
+|---|---|---|
+| NLI decision, evidence selection | `swiss-ai/Apertus-v1.5-8B` | GPU (vLLM) |
+| Passage retrieval | `intfloat/multilingual-e5-large` (via fastembed, ONNX) | CPU |
+
+## Data
+
+[`OSTswiss/MNLIoverSwissVotingBooklets`](https://huggingface.co/datasets/OSTswiss/MNLIoverSwissVotingBooklets)
+(MIT): 1,488 claim/booklet pairs, balanced over labels and over all nine claim/booklet language
+pairs. It ships without a split, so we split **by vote date**: the German, French and Italian
+booklets of one vote are always on the same side. That gives a dev split (6 vote dates, 512
+pairs) for prompt and retrieval choices, and a test split (14 vote dates, 976 pairs) for
+reporting only. Booklet PDFs are downloaded from bk.admin.ch on first use and cached in
+`data/cache/` (not committed).
+
+## Development
+
+```bash
+uv sync --group dev
+make test lint
+```
+
+## License
+
+Apache-2.0, see [LICENSE](../LICENSE).
