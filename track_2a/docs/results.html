@@ -109,7 +109,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 
 <div class="tiles">
   <div class="card tile"><div class="num">0.891</div><div class="lbl">macro-F1 on held-out test</div>
-    <div class="sub">976 claims, 14 votes never seen while building it</div></div>
+    <div class="sub">976 claims from 14 vote dates never seen while building it · 95% CI 0.871–0.909</div></div>
   <div class="card tile"><div class="num">9×</div><div class="lbl">fewer tokens than reading the whole booklet</div>
     <div class="sub">3,400 vs 31,400 prompt tokens per claim, and more accurate</div></div>
   <div class="card tile"><div class="num">4.5 s</div><div class="lbl">median time per claim</div>
@@ -161,7 +161,8 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 <section>
   <h2>Reading less beats reading everything</h2>
   <p class="lede">The same 60 test claims, judged two ways: Apertus given the whole booklet (~31k tokens), or only the 16 retrieved passages.
-  The long input doesn't help an 8B model. It gets distracted, slower, and more often fails to produce a valid answer.</p>
+  The long input doesn't help an 8B model. It gets distracted, slower, and more often fails to produce a valid answer.
+  Retrieval gets 11 of these claims right that the whole booklet misses (the reverse: 3). Paired difference +0.127 F1, 95% CI +0.012 to +0.252.</p>
   <div class="card">
     <div class="legend"><span style="--c: var(--series-1)">16 retrieved passages (ours)</span><span style="--c: var(--series-2)">whole booklet</span></div>
     <div class="grid2" id="cmp"></div>
@@ -177,7 +178,8 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 <section>
   <h2>How many passages to give it</h2>
   <p class="lede">The line shows how often the right passage is among the top <i>k</i> the search returns (dev split).
-  At 8 passages it is missing a quarter of the time; at 16, about one time in ten. That is why we use 16.</p>
+  At 8 passages it is missing a quarter of the time; at 16, about one time in ten. That is why we use 16.
+  The F1 gain from 8 to 16 on dev (+0.041, 95% CI −0.005 to +0.091) is suggestive on its own; the recall gain and the matching test score back it up.</p>
   <div class="card">
     <p class="chart-title">Search finds the annotated passage within the top k</p>
     <p class="chart-sub">Retrieval recall@k, dev split, 338 claims with a reference passage. Labels show Apertus's macro-F1 at that k (dev, 150 claims).</p>

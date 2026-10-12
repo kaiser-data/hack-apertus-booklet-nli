@@ -1,6 +1,6 @@
 from booklet_nli.booklet import _clean
 from booklet_nli.data import select, split_of
-from booklet_nli.metrics import macro_f1, overlaps_reference
+from booklet_nli.metrics import bootstrap_ci, macro_f1, overlaps_reference, paired_diff
 from booklet_nli.nli import parse_verdict
 
 
@@ -48,3 +48,17 @@ def test_select_is_balanced_and_deterministic():
     a = select(rows, "all", 9)
     assert [r["entailment_label"] for r in a].count(0) == 3
     assert a == select(rows, "all", 9)
+
+
+def test_bootstrap_ci_brackets_the_score():
+    gold = [0, 1, 2] * 20
+    pred = [0, 1, 2] * 15 + [1, 2, 0] * 5
+    lo, hi = bootstrap_ci(gold, pred, n=500)
+    assert lo <= macro_f1(gold, pred) <= hi < 1.0
+    assert bootstrap_ci(gold, gold, n=200) == [1.0, 1.0]
+
+
+def test_paired_diff_is_zero_for_identical_runs():
+    gold = [0, 1, 2] * 10
+    pred = [0, 1, 1] * 10
+    assert paired_diff(gold, pred, pred, n=200) == {"diff": 0.0, "ci95": [0.0, 0.0]}

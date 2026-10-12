@@ -10,8 +10,11 @@ import httpx
 
 from .config import CACHE_DIR
 
+# Pinned to one dataset revision so results stay reproducible if the repo changes.
+DATASET_REVISION = "fc2b27600310778da6bbf445651ddbca22d86269"
 DATASET_URL = ("https://huggingface.co/datasets/OSTswiss/MNLIoverSwissVotingBooklets"
-               "/resolve/main/v1.1.jsonl")
+               f"/resolve/{DATASET_REVISION}/v1.1.jsonl")
+DATASET_SHA256 = "87ee4afd9c0ee8861106c50f05884481402ca668aecf927df68fc52d915b02fd"
 DEV_SHARE = 0.25
 
 
@@ -22,6 +25,8 @@ def load_rows(path: str | None = None) -> list[dict]:
             target.parent.mkdir(parents=True, exist_ok=True)
             resp = httpx.get(DATASET_URL, follow_redirects=True, timeout=120)
             resp.raise_for_status()
+            if hashlib.sha256(resp.content).hexdigest() != DATASET_SHA256:
+                raise ValueError(f"dataset checksum mismatch for {DATASET_URL}")
             target.write_bytes(resp.content)
         path = str(target)
     rows = [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]

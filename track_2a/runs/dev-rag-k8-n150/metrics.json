@@ -1,6 +1,10 @@
 {
   "n": 150,
   "macro_f1": 0.8495,
+  "macro_f1_ci95": [
+    0.7864,
+    0.9031
+  ],
   "accuracy": 0.8533,
   "confusion": {
     "rows_gold_cols_pred": [

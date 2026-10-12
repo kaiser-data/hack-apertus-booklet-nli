@@ -56,6 +56,8 @@ uv run booklet-nli predict \
 | `booklet-nli batch --input claims.jsonl --output preds.jsonl` | Rows with `booklet_url` and `claim` |
 | `booklet-nli eval --split test --limit 60 --out runs/x` | Macro-F1, per-language scores, evidence hits, tokens, latency. Resumable |
 | `booklet-nli retrieval --split dev` | Retrieval recall@k against the annotated reference passage. CPU only, no LLM |
+| `booklet-nli compare runs/a runs/b` | Macro-F1 of two runs on their shared claims, with a paired bootstrap 95% interval |
+| `booklet-nli rescore runs/a ...` | Recompute `metrics.json` (incl. bootstrap interval) from `predictions.jsonl` |
 
 Options: `--mode rag|full`, `--k 16`, `--embedder <fastembed model>`.
 

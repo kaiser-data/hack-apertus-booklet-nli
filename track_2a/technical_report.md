@@ -17,10 +17,11 @@ cited passages and a short reason as structured JSON. Apertus is the only model 
 decision.
 
 On the held-out test split (976 claims, 14 vote dates never used during development), the system
-reaches **macro-F1 0.891** with about **3,400 prompt tokens** and a median **4.5 s** per claim on
+reaches **macro-F1 0.891** (95% bootstrap interval 0.871–0.909) with about **3,400 prompt tokens** and a median **4.5 s** per claim on
 one L40S GPU. On a 60-claim test subsample, giving Apertus the whole booklet instead of retrieved
-passages scores **macro-F1 0.735 against 0.861** for retrieval on the same claims, while using
-**9× the prompt tokens** (31,400 vs 3,450) and producing 6 unparseable answers instead of 1.
+passages scores **macro-F1 0.735 against 0.861** for retrieval on the same claims (paired
+difference +0.127, 95% interval +0.012 to +0.252), while using **9× the prompt tokens** (31,400 vs
+3,450) and producing 6 unparseable answers instead of 1.
 Retrieval makes the 8B model both more accurate and much cheaper.
 
 ## 2. Architecture
@@ -83,15 +84,21 @@ it chooses.
 share of non-neutral claims where at least one cited passage overlaps the annotated reference
 snippet (≥ 50 % of the passage's word 5-grams occur in the reference). **Context recall**: share of
 non-neutral claims where the reference passage was among those given to the model. Prompt and
-completion tokens and wall-clock seconds per claim (client side, including network).
+completion tokens and wall-clock seconds per claim (client side, including network). **Uncertainty**:
+95% percentile intervals from 2,000 bootstrap resamples of claims (seed 0); comparisons between two
+runs use a paired bootstrap on the claims both runs share (`booklet-nli compare`).
 
 ### 5.1 Main result (test split, held out, run once)
 
-| Setup | n | Macro-F1 | Acc | Evidence hit | Prompt tokens (mean) | s/claim (median) | Parse fail |
+| Setup | n | Macro-F1 (95% CI) | Acc | Evidence hit | Prompt tokens (mean) | s/claim (median) | Parse fail |
 |---|---|---|---|---|---|---|---|
-| Full booklet (baseline) | 60 | 0.735 | 0.733 | 0.548 | 31,402 | 52.4\* | 6 |
+| Full booklet (baseline) | 60 | 0.735 (0.61–0.84) | 0.733 | 0.548 | 31,402 | 52.4\* | 6 |
 | RAG, k=16, same 60 claims | 60 | 0.861 | 0.867 | 0.690 | 3,446 | 4.4 | 1 |
-| **RAG, k=16 (ours)** | 976 | **0.891** | 0.891 | 0.716 | 3,424 | 4.5 | 2 |
+| **RAG, k=16 (ours)** | 976 | **0.891** (0.871–0.909) | 0.891 | 0.716 | 3,424 | 4.5 | 2 |
+
+On the 60 shared claims, retrieval gets 11 claims right that the full booklet gets wrong, and the
+reverse happens 3 times. The paired difference is +0.127 (95% CI +0.012 to +0.252): retrieval is
+clearly better, but the size of the gap is not precise at n = 60.
 
 \* Full-booklet latency is inflated by load: 12 concurrent requests of ~31k tokens share one GPU.
 On dev with the same setting it was 15.5 s median, still about 3× slower than retrieval.
@@ -114,20 +121,22 @@ Mean completion length is 86 tokens. The 90th-percentile latency is 6.7 s.
 
 All choices were made on dev, on the same 150-claim stratified sample.
 
-| Variant | Macro-F1 | Context recall | Prompt tokens | s/claim (median) |
+| Variant | Macro-F1 (95% CI) | Context recall | Prompt tokens | s/claim (median) |
 |---|---|---|---|---|
-| RAG, k=8 | 0.850 | 0.82 | 1,818 | 3.0 |
-| **RAG, k=16 (chosen)** | **0.890** | 0.92 | 3,354 | 5.0 |
-| RAG, k=16 + extra "contradiction, not neutral" rule in the prompt | 0.864 | – | 3,404 | 4.7 |
-| Full booklet (n = 30) | 0.582 | 1.00 | 31,785 | 15.5 |
+| RAG, k=8 | 0.850 (0.79–0.90) | 0.82 | 1,818 | 3.0 |
+| **RAG, k=16 (chosen)** | **0.890** (0.84–0.94) | 0.92 | 3,354 | 5.0 |
+| RAG, k=16 + extra "contradiction, not neutral" rule in the prompt | 0.864 (0.80–0.92) | – | 3,404 | 4.7 |
+| Full booklet (n = 30) | 0.582 (0.39–0.74) | 1.00 | 31,785 | 15.5 |
 
 - **Retrieval depth.** Retrieval recall@k of the reference passage on dev (338 non-neutral claims):
   @1 0.32, @3 0.57, @5 0.68, @8 0.77, @12 0.85, @20 0.92. Going from k=8 to k=16 fixed 9 claims and
-  broke 3, at about 1.8× the tokens.
+  broke 3, at about 1.8× the tokens. The paired difference is +0.041 (95% CI −0.005 to +0.091), so
+  dev alone does not prove k=16 better; the choice rests on that together with the retrieval
+  recall gain (0.77 → 0.92). The held-out test score (0.891) matches dev (0.890).
 - **A rejected prompt change.** The most frequent dev error was contradiction predicted as neutral.
   One added sentence telling the model to prefer contradiction when the passages cover the point
-  made things worse (fixed 2, broke 6; contradiction → neutral went from 7 to 9), so it was
-  reverted. The same change flipped 11 of 150 predictions at temperature 0, which also shows how
+  made things worse (fixed 2, broke 6; contradiction → neutral went from 7 to 9; paired difference
+  −0.027, 95% CI −0.066 to +0.011), so it was reverted. The same change flipped 11 of 150 predictions at temperature 0, which also shows how
   large the noise is at n = 150: differences of a few claims on dev are not meaningful.
 - **Embedder.** MiniLM was chosen because it was validated end to end and runs on CPU;
   `multilingual-e5-large` could not be benchmarked on the 8 GB development laptop.
@@ -159,14 +168,17 @@ All choices were made on dev, on the same 150-claim stratified sample.
   run on Modal the median is 4.47 s and the mean 8.71 s.
 - **Baselines.** The full-booklet comparison uses a 60-claim test subsample, not all 976 claims, to
   keep GPU cost low; it is directional, not precise.
-- **Single run.** Each configuration was run once at temperature 0; we did not measure run-to-run
-  variance beyond the prompt-change experiment above.
+- **Single run, few dates.** Each configuration was run once at temperature 0. The bootstrap
+  intervals resample claims, but the test set comes from only 14 vote dates, so claims are not fully
+  independent; dev decisions rest on 6 dates.
 
 ## 7. Reproducibility
 
 - **Hardware:** Apertus on one NVIDIA L40S (Modal); retrieval and evaluation on a 4-vCPU Modal
   container; development on an 8 GB Apple M2.
 - **Software:** Python 3.12, dependencies pinned in `uv.lock`; vLLM image pinned by digest.
+- **Data:** dataset pinned to Hugging Face revision `fc2b276` and checked by SHA-256 on download
+  (`data.py`).
 - **Determinism:** temperature 0, sample seed 0, split by hash of vote date. Embeddings computed on
   different CPUs can differ in the last digits and change the order of near-tied passages (seen
   once in a 3-claim check: same label, 4,548 vs 4,340 prompt tokens).

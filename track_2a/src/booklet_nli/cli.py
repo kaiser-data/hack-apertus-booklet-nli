@@ -10,7 +10,7 @@ from .booklet import extract_passages, fetch_pdf
 from .config import llm_config
 from .data import load_rows, select
 from .llm import LLM
-from .metrics import overlaps_reference, summarize
+from .metrics import macro_f1, overlaps_reference, paired_diff, summarize
 from .nli import select_context, verify
 from .retrieve import DEFAULT_EMBEDDER, rank
 
@@ -114,6 +114,38 @@ def cmd_retrieval(args: argparse.Namespace) -> None:
     print(json.dumps(result, indent=2))
 
 
+def _predictions(run: str) -> dict[int, dict]:
+    path = Path(run) / "predictions.jsonl"
+    return {r["id"]: r for r in map(json.loads, path.read_text().splitlines())}
+
+
+def cmd_compare(args: argparse.Namespace) -> None:
+    """Macro-F1 of two runs on the claims they share, with a paired bootstrap interval."""
+    a, b = _predictions(args.run_a), _predictions(args.run_b)
+    ids = sorted(a.keys() & b.keys())
+    gold = [a[i]["gold"] for i in ids]
+    pa, pb = [a[i]["pred"] for i in ids], [b[i]["pred"] for i in ids]
+    result = {"n_shared": len(ids), "a": args.run_a, "b": args.run_b,
+              "macro_f1_a": round(macro_f1(gold, pa), 4),
+              "macro_f1_b": round(macro_f1(gold, pb), 4),
+              "a_minus_b": paired_diff(gold, pa, pb),
+              "only_a_correct": sum(x == g != y for g, x, y in zip(gold, pa, pb)),
+              "only_b_correct": sum(y == g != x for g, x, y in zip(gold, pa, pb))}
+    print(json.dumps(result, indent=2))
+
+
+def cmd_rescore(args: argparse.Namespace) -> None:
+    """Recompute metrics.json from predictions.jsonl, keeping the recorded config."""
+    for run in args.runs:
+        path = Path(run) / "metrics.json"
+        config = json.loads(path.read_text()).get("config") if path.exists() else None
+        metrics = summarize([r for _, r in sorted(_predictions(run).items())])
+        if config:
+            metrics["config"] = config
+        path.write_text(json.dumps(metrics, indent=2))
+        print(f"{run}: macro-F1 {metrics['macro_f1']} CI95 {metrics['macro_f1_ci95']}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="booklet-nli", description=__doc__)
     sub = parser.add_subparsers(required=True)
@@ -146,6 +178,15 @@ def main() -> None:
         else:
             p.add_argument("--ks", default="1,3,5,8,12,20")
             p.add_argument("--embedder", default=DEFAULT_EMBEDDER)
+
+    p = sub.add_parser("compare", help="paired macro-F1 comparison of two run directories")
+    p.add_argument("run_a")
+    p.add_argument("run_b")
+    p.set_defaults(func=cmd_compare)
+
+    p = sub.add_parser("rescore", help="recompute metrics.json of run directories")
+    p.add_argument("runs", nargs="+")
+    p.set_defaults(func=cmd_rescore)
 
     args = parser.parse_args()
     args.func(args)
