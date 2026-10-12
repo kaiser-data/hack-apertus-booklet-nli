@@ -37,4 +37,9 @@ runs/*
 !runs/dev-full-n30/
 !runs/rejected-dev-rag-k16-n150-prompt-contradiction/
 !runs/retrieval-dev-paraphrase-multilingual-MiniLM-L12-v2.json
+!runs/rejected-dev-rag-k16-n150-parser-v4/
+!runs/retrieval-dev-parser-v2.json
+!runs/retrieval-dev-parser-v3.json
+!runs/retrieval-dev-parser-v3-vote.json
+!runs/retrieval-dev-parser-v4.json
 runs/**/*.log

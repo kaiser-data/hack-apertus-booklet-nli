@@ -1,0 +1,14 @@
+{
+  "embedder": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "by_vote": true,
+  "n": 338,
+  "recall_at_k": {
+    "1": 0.3521,
+    "3": 0.574,
+    "5": 0.6953,
+    "8": 0.7604,
+    "12": 0.7959,
+    "16": 0.8225,
+    "20": 0.8373
+  }
+}

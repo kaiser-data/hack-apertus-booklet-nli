@@ -77,6 +77,12 @@ it chooses.
   side and no booklet is seen during development and then tested on:
   dev = 512 pairs / 6 vote dates (all design decisions), test = 976 pairs / 14 vote dates (run once).
 - No personal data is involved: claims and booklets are public political texts.
+- **Sources and size we chose not to add.** We did not fine-tune (a LoRA on 512 dev rows from six
+  vote dates would mostly learn those dates). We did not add XNLI or ANLI: both are CC BY-NC 4.0,
+  XNLI has no Italian, and both are sentence-pair NLI rather than document-grounded. We did not add
+  legal texts (Fedlex) or parliamentary debates as evidence: the task asks whether the *booklet*
+  settles a claim, and a statute that entails the claim would turn a correct "neutral" into a wrong
+  "entailment". The dataset's `vote` column and `baseline_score` are never used as model input.
 
 ## 5. Evaluation
 
@@ -141,7 +147,29 @@ All choices were made on dev, on the same 150-claim stratified sample.
 - **Embedder.** MiniLM was chosen because it was validated end to end and runs on CPU;
   `multilingual-e5-large` could not be benchmarked on the 8 GB development laptop.
 
-### 5.3 Error analysis (dev, k=16, 16 errors)
+### 5.3 Data-side experiments (dev, not adopted)
+
+Two retrieval changes were tested on dev after the test run, both suggested by external review.
+Recall@k is over all 338 dev claims with a reference passage; the end-to-end row uses the same 150
+claims as §5.2.
+
+| Variant | Recall@8 | Recall@16 | Recall@20 | Dev macro-F1 (n = 150) |
+|---|---|---|---|---|
+| Parser v2 (used for all reported results) | 0.769 | 0.911 | 0.929 | 0.890 |
+| v4: split oversized blocks at sentences, keep short blocks (rates, table cells), ≤150-char in-page overlap | **0.808** | **0.926** | **0.950** | 0.878 |
+| v3 + route retrieval to the best-matching vote section (top-level outline entry) | 0.760 | 0.823 | 0.837 | – |
+
+- **Better passage cutting** finds the reference passage more often, but end-to-end macro-F1 did
+  not improve (paired difference −0.013, 95% CI −0.072 to +0.050; 8 claims fixed, 10 broken), and
+  evidence hit moved only from 0.707 to 0.727. Retrieval recall is not the binding constraint at
+  k = 16. The code is kept on the branch `experiment/parser-v4`.
+- **Vote routing** (score each vote section by its three best passages, fill most of the context
+  from the winner, keep the four best global passages as a fallback) clearly hurt recall: the
+  section choice was wrong too often, and global ranking already concentrates on the right vote.
+  It was not run end to end, and its code was not kept.
+- Neither change was run on test, so the test result in §5.1 remains a single, untouched run.
+
+### 5.4 Error analysis (dev, k=16, 16 errors)
 
 - 4 contradiction → neutral with the right passage in context: the model reads "the passages do not
   mention X" where the passage states something incompatible with X.
@@ -155,8 +183,8 @@ All choices were made on dev, on the same 150-claim stratified sample.
 
 - **Retrieval is the ceiling.** About 11 % of non-neutral test claims never see their reference
   passage (context recall 0.89); the model cannot recover those.
-- **Multi-vote booklets.** One booklet covers several votes; retrieval ignores which vote a claim is
-  about and can mix them up.
+- **Multi-vote booklets.** One booklet covers several votes; retrieval can return passages of the
+  wrong vote. Routing by the outline's top-level section made this worse (§5.3).
 - **Contradiction vs neutral** remains the main confusion (31 test claims), and prompt wording did
   not fix it.
 - **Evidence hit is a proxy.** It measures n-gram overlap with one annotated snippet; a correct
@@ -188,7 +216,7 @@ All choices were made on dev, on the same 150-claim stratified sample.
 make run                                   # Docker: balanced 60-claim test sample
 make run LIMIT=976                         # full test split
 modal deploy modal/serve_apertus.py        # serve Apertus
-modal run modal/run_eval.py --split test --limit 976 --k 16 --name test-rag-k16-n976
+modal run modal/run_eval.py::main --split test --limit 976 --k 16 --name test-rag-k16-n976
 ```
 
 All run directories (`predictions.jsonl` with label, cited pages, reason, tokens and seconds per
@@ -197,8 +225,8 @@ claim; `metrics.json`) are in `track_2a/runs/`. A visual summary of the results 
 
 ## 8. Next steps
 
-- Restrict retrieval to the outline section of the vote a claim refers to, which addresses the
-  multi-vote misses directly.
+- Disambiguate the vote with a learned signal instead of outline routing: e.g. let Apertus pick the
+  vote from the booklet's table of contents in a cheap first call, then retrieve within it.
 - A cross-encoder re-ranker over the top 30 passages, to raise recall at k ≤ 16 and cut tokens.
 - Two-pass verification for claims predicted neutral: ask Apertus to look for an incompatible
   statement explicitly, only when a passage is close in embedding space.

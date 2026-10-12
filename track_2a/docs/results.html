@@ -222,7 +222,9 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
       <li><b>Retrieval is the ceiling.</b> For about 11 % of test claims the right passage never reaches Apertus, so it can't get those right.</li>
       <li><b>Multi-vote booklets.</b> One booklet covers several votes; the search sometimes returns passages about the wrong vote (e.g. pension reform for a farming claim).</li>
       <li><b>Prompt tweaks didn't fix contradictions.</b> An extra rule (“if the passages cover the point and differ, it's a contradiction”) lowered dev F1 from 0.890 to 0.864, so it was dropped.</li>
-      <li><b>Next:</b> limit the search to the claim's own vote section, and re-rank passages before Apertus sees them.</li>
+      <li><b>Data changes tested after the test run (dev only, not adopted):</b> better passage cutting raised retrieval recall@16 from 0.911 to 0.926 but not the F1 (0.890 → 0.878, within noise); restricting the search to one vote section lowered recall to 0.823.</li>
+      <li><b>Deliberately not used:</b> fine-tuning on six dev vote dates, XNLI/ANLI (non-commercial licence, no Italian in XNLI), and laws or debates as evidence (the question is what the <i>booklet</i> says).</li>
+      <li><b>Next:</b> let Apertus pick the vote from the booklet's table of contents first, and re-rank passages before it sees them.</li>
     </ul>
   </div>
 </section>

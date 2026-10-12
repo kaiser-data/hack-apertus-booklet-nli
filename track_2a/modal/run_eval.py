@@ -6,8 +6,8 @@ container talks to the deployed Apertus server (`modal/serve_apertus.py`). Bookl
 embeddings and run directories live on the Volume `booklet-nli-data`, so runs resume and the cache
 survives between them.
 
-    modal run modal/run_eval.py --split test --limit 976 --k 16 --name test-rag-k16-n976
-    modal run modal/run_eval.py --split test --limit 60 --mode full --name test-full-n60
+    modal run modal/run_eval.py::main --split test --limit 976 --k 16 --name test-rag-k16-n976
+    modal run modal/run_eval.py::main --split test --limit 60 --mode full --name test-full-n60
 
 If `runs/<name>/predictions.jsonl` exists locally, it is uploaded first and those rows are
 skipped. When the run ends, `predictions.jsonl` and `metrics.json` are written back to
@@ -69,3 +69,21 @@ def main(split: str = "test", limit: int = 60, mode: str = "rag", k: int = 16,
     for fname, text in result["files"].items():
         (local / fname).write_text(text)
     print(f"exit {result['returncode']}; wrote {sorted(result['files'])} to {local}")
+
+
+@app.function(image=image, cpu=4, memory=8192, timeout=60 * 60, volumes={VOL_PATH: volume})
+def run_retrieval(split: str, ks: str) -> str:
+    """Retrieval recall@k (no LLM): CPU only, so it does not wake the GPU server."""
+    cmd = ["/app/.venv/bin/booklet-nli", "retrieval", "--split", split, "--ks", ks]
+    out = subprocess.run(cmd, check=True, capture_output=True, text=True).stdout
+    volume.commit()
+    return out
+
+
+@app.local_entrypoint()
+def retrieval(split: str = "dev", ks: str = "1,3,5,8,12,16,20", name: str = ""):
+    """modal run modal/run_eval.py::retrieval --name retrieval-dev-parser-v3"""
+    out = run_retrieval.remote(split, ks)
+    print(out)
+    if name:
+        (ROOT / "runs" / f"{name}.json").write_text(out)
