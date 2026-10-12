@@ -28,4 +28,13 @@ build/
 
 # Local caches and run outputs
 data/cache/
-runs/
+runs/*
+# Publish the result files behind the report, never logs (a server log once held the API key).
+!runs/test-rag-k16-n976/
+!runs/test-full-n60/
+!runs/dev-rag-k8-n150/
+!runs/dev-rag-k16-n150/
+!runs/dev-full-n30/
+!runs/rejected-dev-rag-k16-n150-prompt-contradiction/
+!runs/retrieval-dev-paraphrase-multilingual-MiniLM-L12-v2.json
+runs/**/*.log

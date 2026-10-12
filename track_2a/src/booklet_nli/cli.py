@@ -18,7 +18,7 @@ from .retrieve import DEFAULT_EMBEDDER, rank
 def _add_context_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--mode", choices=["rag", "full"], default="rag",
                    help="rag: top-k retrieved passages; full: the whole booklet")
-    p.add_argument("--k", type=int, default=8, help="passages retrieved in rag mode")
+    p.add_argument("--k", type=int, default=16, help="passages retrieved in rag mode")
     p.add_argument("--embedder", default=DEFAULT_EMBEDDER)
 
 

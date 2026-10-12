@@ -1,0 +1,83 @@
+{
+  "n": 150,
+  "macro_f1": 0.8636,
+  "accuracy": 0.8667,
+  "confusion": {
+    "rows_gold_cols_pred": [
+      "entailment",
+      "neutral",
+      "contradiction"
+    ],
+    "matrix": [
+      [
+        46,
+        5,
+        3
+      ],
+      [
+        0,
+        50,
+        1
+      ],
+      [
+        2,
+        9,
+        34
+      ]
+    ]
+  },
+  "macro_f1_by_group": {
+    "booklet_de": {
+      "n": 50,
+      "macro_f1": 0.8269
+    },
+    "booklet_fr": {
+      "n": 50,
+      "macro_f1": 0.8398
+    },
+    "booklet_it": {
+      "n": 50,
+      "macro_f1": 0.9184
+    },
+    "claim_de": {
+      "n": 51,
+      "macro_f1": 0.8394
+    },
+    "claim_fr": {
+      "n": 51,
+      "macro_f1": 0.8798
+    },
+    "claim_it": {
+      "n": 48,
+      "macro_f1": 0.871
+    },
+    "cross_lingual": {
+      "n": 100,
+      "macro_f1": 0.8472
+    },
+    "monolingual": {
+      "n": 50,
+      "macro_f1": 0.8968
+    }
+  },
+  "evidence_hit_rate": 0.6667,
+  "context_recall": 0.9192,
+  "prompt_tokens": {
+    "mean": 3404,
+    "median": 3457.5
+  },
+  "seconds": {
+    "mean": 28.44,
+    "median": 4.73
+  },
+  "parse_failures": 0,
+  "config": {
+    "model": "swiss-ai/Apertus-v1.5-8B",
+    "mode": "rag",
+    "k": 16,
+    "embedder": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "split": "dev",
+    "limit": 150,
+    "seed": 0
+  }
+}

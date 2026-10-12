@@ -9,7 +9,7 @@ from fastembed import TextEmbedding
 from .booklet import Passage
 from .config import CACHE_DIR
 
-DEFAULT_EMBEDDER = "intfloat/multilingual-e5-large"
+DEFAULT_EMBEDDER = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
 
 @lru_cache(maxsize=2)

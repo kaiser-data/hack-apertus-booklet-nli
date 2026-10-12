@@ -11,6 +11,6 @@ RUN uv sync --frozen --no-dev
 
 # Booklets, parsed passages, embeddings and the embedder are cached under /app/data/cache;
 # mount a volume there to keep them across runs.
-ENV BOOKLET_NLI_DATA=/app/data PATH="/app/.venv/bin:$PATH"
-ENTRYPOINT ["booklet-nli"]
+ENV BOOKLET_NLI_DATA=/app/data
+ENTRYPOINT ["/app/.venv/bin/booklet-nli"]
 CMD ["--help"]

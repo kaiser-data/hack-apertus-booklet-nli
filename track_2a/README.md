@@ -10,6 +10,16 @@ shows the booklet passages (with page numbers) the answer rests on.
 Apertus is the only model that makes the decision. A small multilingual embedding model picks
 which passages Apertus gets to read (see [Models](#models)).
 
+## Results
+
+On the held-out test split (976 claims, 14 votes not used during development): **macro-F1 0.891**,
+about 3,400 prompt tokens and a median 4.5 s per claim. Giving Apertus the whole booklet instead
+scores 0.735 on the same 60-claim subsample (vs 0.861 with retrieval) at 9× the tokens.
+
+- Visual summary: [`docs/results.html`](docs/results.html) (open locally in a browser)
+- Technical report: [`kaiser-data_Report.pdf`](kaiser-data_Report.pdf), source [`technical_report.md`](technical_report.md)
+- Raw predictions and metrics behind every number: [`runs/`](runs/)
+
 ## How it works
 
 ```
@@ -47,7 +57,7 @@ uv run booklet-nli predict \
 | `booklet-nli eval --split test --limit 60 --out runs/x` | Macro-F1, per-language scores, evidence hits, tokens, latency. Resumable |
 | `booklet-nli retrieval --split dev` | Retrieval recall@k against the annotated reference passage. CPU only, no LLM |
 
-Options: `--mode rag|full`, `--k 8`, `--embedder <fastembed model>`.
+Options: `--mode rag|full`, `--k 16`, `--embedder <fastembed model>`.
 
 ### With Docker (what judges run)
 
@@ -80,7 +90,7 @@ Any OpenAI-compatible endpoint works, configured through `LLM_NAME`, `LLM_BASE_U
 | Role | Model | Where |
 |---|---|---|
 | NLI decision, evidence selection | `swiss-ai/Apertus-v1.5-8B` | GPU (vLLM) |
-| Passage retrieval | `intfloat/multilingual-e5-large` (via fastembed, ONNX) | CPU |
+| Passage retrieval | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (via fastembed, ONNX) | CPU |
 
 ## Data
 

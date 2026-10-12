@@ -2,7 +2,7 @@
 
 IMAGE ?= booklet-nli
 MODE  ?= rag
-K     ?= 8
+K     ?= 16
 SPLIT ?= test
 LIMIT ?= 60
 RUN   ?= runs/$(SPLIT)-$(MODE)-k$(K)-n$(LIMIT)

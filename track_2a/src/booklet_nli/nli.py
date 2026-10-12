@@ -96,7 +96,7 @@ def select_context(claim: str, passages: list[Passage], mode: str, k: int,
     raise ValueError(f"unknown mode {mode!r}")
 
 
-def verify(llm: LLM, booklet: str, claim: str, mode: str = "rag", k: int = 8,
+def verify(llm: LLM, booklet: str, claim: str, mode: str = "rag", k: int = 16,
            embedder: str = DEFAULT_EMBEDDER) -> Verdict:
     passages = extract_passages(fetch_pdf(booklet))
     context = select_context(claim, passages, mode, k, embedder)

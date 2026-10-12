@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Booklet NLI Results</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f5f2;
+  --surface-1: #fcfcfb;
+  --surface-2: #f0efeb;
+  --border: #dcdbd6;
+  --grid: #e6e5e0;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #6f6e69;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --seq-0: #f3f7fd; --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #5598e7; --seq-4: #256abf; --seq-5: #104281;
+  --good: #1a7f37; --bad: #c4314b; --neutral: #6f6e69;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface-1: #1a1a19; --surface-2: #242422; --border: #3a3a37; --grid: #2e2e2b;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #9a998f;
+    --series-1: #3987e5; --series-2: #d95926;
+    --seq-0: #1f2530; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #9ec5f4;
+    --good: #4cb86a; --bad: #e66767; --neutral: #9a998f;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface-1: #1a1a19; --surface-2: #242422; --border: #3a3a37; --grid: #2e2e2b;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #9a998f;
+  --series-1: #3987e5; --series-2: #d95926;
+  --seq-0: #1f2530; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #9ec5f4;
+  --good: #4cb86a; --bad: #e66767; --neutral: #9a998f;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text-primary);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+header h1 { font-size: 28px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.01em; }
+header p { margin: 0; color: var(--text-secondary); max-width: 720px; }
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin-bottom: 8px; }
+section { margin-top: 40px; }
+h2 { font-size: 19px; margin: 0 0 4px; }
+.lede { color: var(--text-secondary); margin: 0 0 16px; max-width: 740px; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 24px; }
+.tile .num { font-size: 40px; font-weight: 650; line-height: 1.1; letter-spacing: -0.02em; }
+.tile .lbl { font-weight: 600; margin-top: 4px; }
+.tile .sub { color: var(--text-muted); font-size: 13px; margin-top: 2px; }
+.examples { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.ex .meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+.ex blockquote { margin: 10px 0; font-size: 15px; font-style: italic; }
+.ex .why { font-size: 13px; color: var(--text-secondary); border-top: 1px solid var(--grid); padding-top: 8px; }
+.badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 8px;
+  border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.badge.e { color: var(--good); } .badge.c { color: var(--bad); } .badge.n { color: var(--neutral); }
+.pair { font-family: ui-monospace, Menlo, monospace; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.chart-title { font-weight: 600; font-size: 14px; margin: 0 0 2px; }
+.chart-sub { font-size: 12px; color: var(--text-muted); margin: 0 0 8px; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+  margin-right: 6px; vertical-align: -1px; background: var(--c); }
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+svg text { fill: var(--text-secondary); font-size: 12px; }
+svg .val { fill: var(--text-primary); font-weight: 600; }
+svg .axis { stroke: var(--border); }
+svg .gridline { stroke: var(--grid); }
+.hit { fill: transparent; cursor: default; }
+#tip { position: fixed; pointer-events: none; background: var(--surface-1); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 6px; padding: 6px 9px; font-size: 12px; line-height: 1.4;
+  box-shadow: 0 4px 14px rgba(0,0,0,.12); opacity: 0; transition: opacity .08s; z-index: 10; max-width: 260px; }
+.flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.step { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px; position: relative; }
+.step .n { font-size: 12px; color: var(--text-muted); }
+.step h3 { font-size: 15px; margin: 2px 0 4px; }
+.step p { font-size: 13px; color: var(--text-secondary); margin: 0; }
+.step .where { margin-top: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.step:not(:last-child)::after { content: "→"; position: absolute; right: -10px; top: 50%; transform: translate(50%, -50%);
+  color: var(--text-muted); font-size: 16px; }
+@media (max-width: 720px) { .flow { grid-template-columns: 1fr; } .step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -14px; transform: translate(50%, 0); } }
+ul.plain { margin: 0; padding-left: 18px; color: var(--text-secondary); }
+ul.plain li { margin: 4px 0; }
+ul.plain b { color: var(--text-primary); }
+details { margin-top: 12px; font-size: 13px; color: var(--text-secondary); }
+summary { cursor: pointer; }
+table { border-collapse: collapse; margin-top: 8px; font-size: 13px; width: 100%; }
+th, td { border-bottom: 1px solid var(--grid); padding: 5px 8px; text-align: left; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+footer { margin-top: 48px; font-size: 12px; color: var(--text-muted); }
+code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="eyebrow">Hack Apertus 2026 · Track 2A · team kaiser-data</div>
+  <h1>Checking claims against Swiss voting booklets with Apertus</h1>
+  <p>Give it an official voting booklet (German, French or Italian) and a claim in any of the three
+  languages. Apertus-v1.5-8B says whether the booklet <b>supports</b>, <b>contradicts</b> or
+  <b>doesn't settle</b> the claim, and points to the pages it relied on.</p>
+</header>
+
+<div class="tiles">
+  <div class="card tile"><div class="num">0.891</div><div class="lbl">macro-F1 on held-out test</div>
+    <div class="sub">976 claims, 14 votes never seen while building it</div></div>
+  <div class="card tile"><div class="num">9×</div><div class="lbl">fewer tokens than reading the whole booklet</div>
+    <div class="sub">3,400 vs 31,400 prompt tokens per claim, and more accurate</div></div>
+  <div class="card tile"><div class="num">4.5 s</div><div class="lbl">median time per claim</div>
+    <div class="sub">one L40S GPU, 12 claims in parallel</div></div>
+</div>
+
+<section>
+  <h2>How it works</h2>
+  <p class="lede">Apertus doesn't read the whole booklet. A small search model first finds the 16 passages
+  most related to the claim, across languages, and Apertus judges only those.</p>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><h3>Split the booklet</h3>
+      <p>The PDF becomes short passages (≤ 900 characters), each tagged with its page and section.</p>
+      <div class="where">CPU · cached</div></div>
+    <div class="step"><div class="n">2</div><h3>Find related passages</h3>
+      <p>A multilingual embedding model picks the 16 passages closest to the claim. A French claim finds German text directly, with no translation.</p>
+      <div class="where">CPU · MiniLM</div></div>
+    <div class="step"><div class="n">3</div><h3>Apertus decides</h3>
+      <p>Apertus reads the claim and the 16 passages and answers in fixed JSON: label, cited passages, one-sentence reason.</p>
+      <div class="where">GPU · Apertus-v1.5-8B</div></div>
+    <div class="step"><div class="n">4</div><h3>Verdict with pages</h3>
+      <p>Supports / contradicts / doesn't settle, plus the pages to check yourself.</p>
+      <div class="where">JSON · CLI</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Three real answers from the test run</h2>
+  <p class="lede">Each claim is in a different language from its booklet. All three were judged correctly.</p>
+  <div class="examples">
+    <div class="card ex">
+      <div class="meta"><span class="pair">claim DE → booklet FR</span><span class="badge e">✓ supports</span></div>
+      <blockquote>“Der Bundesrat führt an, dass Schweizer Exporteure ohne ein Abkommen mit Indonesien gegenüber ihren europäischen Konkurrenten im Nachteil wären.”</blockquote>
+      <div class="why"><b>Apertus:</b> the Federal Council argues Swiss exporters would be at a disadvantage without the agreement; passage on <b>p. 52</b> states it explicitly.</div>
+    </div>
+    <div class="card ex">
+      <div class="meta"><span class="pair">claim FR → booklet DE</span><span class="badge c">✗ contradicts</span></div>
+      <blockquote>“Le texte de vote affirme que la taxation minimale s’applique aux entreprises dont le chiffre d’affaires annuel consolidé atteint 500 millions d’euros.”</blockquote>
+      <div class="why"><b>Apertus:</b> « Les passages indiquent que le chiffre d'affaires requis est de <b>750 millions</b> d'euros, non de 500 millions. » <b>pp. 11–12, 21–22</b></div>
+    </div>
+    <div class="card ex">
+      <div class="meta"><span class="pair">claim FR → booklet IT</span><span class="badge n">○ doesn't settle</span></div>
+      <blockquote>“Le Conseil fédéral recommande à la Suisse de ratifier la Convention des Nations Unies relative aux droits des personnes handicapées.”</blockquote>
+      <div class="why"><b>Apertus:</b> the booklet is about the population initiative and its consequences; it says nothing about ratifying the UN convention. No pages cited.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Reading less beats reading everything</h2>
+  <p class="lede">The same 60 test claims, judged two ways: Apertus given the whole booklet (~31k tokens), or only the 16 retrieved passages.
+  The long input doesn't help an 8B model. It gets distracted, slower, and more often fails to produce a valid answer.</p>
+  <div class="card">
+    <div class="legend"><span style="--c: var(--series-1)">16 retrieved passages (ours)</span><span style="--c: var(--series-2)">whole booklet</span></div>
+    <div class="grid2" id="cmp"></div>
+    <details><summary>Table view</summary>
+      <table><tr><th>Same 60 test claims</th><th class="r">Macro-F1</th><th class="r">Prompt tokens</th><th class="r">s/claim (median)</th><th class="r">Unparseable answers</th></tr>
+      <tr><td>16 retrieved passages</td><td class="r">0.861</td><td class="r">3,446</td><td class="r">4.4</td><td class="r">1</td></tr>
+      <tr><td>Whole booklet</td><td class="r">0.735</td><td class="r">31,402</td><td class="r">52.4*</td><td class="r">6</td></tr></table>
+      <p>* Inflated: 12 long requests shared one GPU at once. With the same setting on dev it was 15.5 s, still ~3× slower.</p>
+    </details>
+  </div>
+</section>
+
+<section>
+  <h2>How many passages to give it</h2>
+  <p class="lede">The line shows how often the right passage is among the top <i>k</i> the search returns (dev split).
+  At 8 passages it is missing a quarter of the time; at 16, about one time in ten. That is why we use 16.</p>
+  <div class="card">
+    <p class="chart-title">Search finds the annotated passage within the top k</p>
+    <p class="chart-sub">Retrieval recall@k, dev split, 338 claims with a reference passage. Labels show Apertus's macro-F1 at that k (dev, 150 claims).</p>
+    <div id="recall"></div>
+    <details><summary>Table view</summary>
+      <table><tr><th>k</th><th class="r">Recall@k</th><th class="r">Macro-F1 (dev)</th><th class="r">Prompt tokens</th></tr>
+      <tr><td>1</td><td class="r">0.32</td><td class="r">–</td><td class="r">–</td></tr>
+      <tr><td>3</td><td class="r">0.57</td><td class="r">–</td><td class="r">–</td></tr>
+      <tr><td>5</td><td class="r">0.68</td><td class="r">–</td><td class="r">–</td></tr>
+      <tr><td>8</td><td class="r">0.77</td><td class="r">0.850</td><td class="r">1,818</td></tr>
+      <tr><td>12</td><td class="r">0.85</td><td class="r">–</td><td class="r">–</td></tr>
+      <tr><td>16</td><td class="r">0.92*</td><td class="r">0.890</td><td class="r">3,354</td></tr>
+      <tr><td>20</td><td class="r">0.92</td><td class="r">–</td><td class="r">–</td></tr></table>
+      <p>* At k=16, the share of dev claims whose reference passage was in Apertus's context (measured in the k=16 run).</p>
+    </details>
+  </div>
+</section>
+
+<section>
+  <h2>Where it goes wrong</h2>
+  <p class="lede">Test split, all 976 claims. Each row is the true answer; colour shows the share of that row.
+  The main confusion is a contradiction judged as “doesn't settle”: the model sees the topic but misses that a detail is incompatible.</p>
+  <div class="grid2">
+    <div class="card">
+      <p class="chart-title">True answer vs Apertus's answer</p>
+      <p class="chart-sub">Counts, shaded by share of the row</p>
+      <div id="cm"></div>
+    </div>
+    <div class="card">
+      <p class="chart-title">Macro-F1 by language</p>
+      <p class="chart-sub">Test split. Claims in a different language from the booklet score no worse.</p>
+      <div id="lang"></div>
+      <details><summary>Table view</summary>
+        <table id="langtable"></table>
+      </details>
+    </div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <ul class="plain">
+      <li><b>Retrieval is the ceiling.</b> For about 11 % of test claims the right passage never reaches Apertus, so it can't get those right.</li>
+      <li><b>Multi-vote booklets.</b> One booklet covers several votes; the search sometimes returns passages about the wrong vote (e.g. pension reform for a farming claim).</li>
+      <li><b>Prompt tweaks didn't fix contradictions.</b> An extra rule (“if the passages cover the point and differ, it's a contradiction”) lowered dev F1 from 0.890 to 0.864, so it was dropped.</li>
+      <li><b>Next:</b> limit the search to the claim's own vote section, and re-rank passages before Apertus sees them.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  Numbers from <code>track_2a/runs/test-rag-k16-n976</code>, <code>test-full-n60</code>, <code>dev-rag-k8-n150</code>,
+  <code>dev-rag-k16-n150</code> and <code>retrieval-dev-paraphrase-multilingual-MiniLM-L12-v2.json</code>.
+  Dataset: OSTswiss/MNLIoverSwissVotingBooklets v1.1 (MIT), split by vote date. Full write-up: <code>kaiser-data_Report.pdf</code>.
+</footer>
+</main>
+<div id="tip" role="status"></div>
+
+<script>
+const NS = "http://www.w3.org/2000/svg";
+const tip = document.getElementById("tip");
+function el(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function svg(w, h, host) { return el("svg", { viewBox: `0 0 ${w} ${h}`, role: "img" }, host); }
+function hover(node, html) {
+  node.addEventListener("mousemove", ev => {
+    tip.innerHTML = html; tip.style.opacity = 1;
+    const x = Math.min(ev.clientX + 14, innerWidth - tip.offsetWidth - 8);
+    tip.style.left = x + "px"; tip.style.top = (ev.clientY + 14) + "px";
+  });
+  node.addEventListener("mouseleave", () => { tip.style.opacity = 0; });
+}
+// Horizontal bar with a 4px rounded data end anchored at the baseline.
+function hbar(g, x0, y, len, h, color) {
+  const r = Math.min(4, len / 2, h / 2);
+  const d = `M${x0},${y} h${len - r} a${r},${r} 0 0 1 ${r},${r} v${h - 2 * r} a${r},${r} 0 0 1 ${-r},${r} h${-(len - r)} Z`;
+  return el("path", { d, fill: color }, g);
+}
+function vbar(g, x, y0, w, len, color) {
+  const r = Math.min(4, len / 2, w / 2);
+  const d = `M${x},${y0} v${-(len - r)} a${r},${r} 0 0 1 ${r},${-r} h${w - 2 * r} a${r},${r} 0 0 1 ${r},${r} v${len - r} Z`;
+  return el("path", { d, fill: color }, g);
+}
+
+// 1. Comparison small multiples: one measure per panel, one scale each.
+const panels = [
+  { title: "Macro-F1", sub: "higher is better", vals: [0.861, 0.735], fmt: v => v.toFixed(3), max: 1 },
+  { title: "Prompt tokens per claim", sub: "lower is cheaper", vals: [3446, 31402], fmt: v => v.toLocaleString("en-US"), max: 32000 },
+  { title: "Seconds per claim (median)", sub: "lower is faster · whole-booklet value inflated by GPU queueing", vals: [4.4, 52.4], fmt: v => v.toFixed(1) + " s", max: 55 },
+  { title: "Unparseable answers (of 60)", sub: "lower is better", vals: [1, 6], fmt: v => String(v), max: 7 },
+];
+const names = ["16 passages", "whole booklet"];
+const colors = ["var(--series-1)", "var(--series-2)"];
+const cmp = document.getElementById("cmp");
+for (const p of panels) {
+  const box = document.createElement("div");
+  box.innerHTML = `<p class="chart-title">${p.title}</p><p class="chart-sub">${p.sub}</p>`;
+  cmp.appendChild(box);
+  const W = 420, H = 86, L = 104, R = 70;
+  const s = svg(W, H, box);
+  p.vals.forEach((v, i) => {
+    const y = 10 + i * 36, len = Math.max(2, (W - L - R) * v / p.max);
+    el("text", { x: L - 8, y: y + 16, "text-anchor": "end" }, s).textContent = names[i];
+    hbar(s, L, y, len, 24, colors[i]);
+    el("text", { x: L + len + 6, y: y + 16, class: "val" }, s).textContent = p.fmt(v);
+    const hit = el("rect", { x: 0, y: y - 4, width: W, height: 32, class: "hit" }, s);
+    hover(hit, `<b>${names[i]}</b><br>${p.title}: ${p.fmt(v)}`);
+  });
+  el("line", { x1: L, x2: L, y1: 4, y2: H - 4, class: "axis" }, s);
+}
+
+// 2. Recall@k line with the two evaluated k values called out.
+(function () {
+  const pts = [[1, .3166], [3, .5651], [5, .6805], [8, .7692], [12, .8462], [20, .9201]];
+  const f1 = { 8: 0.850, 16: 0.890 };
+  const W = 860, H = 260, L = 44, R = 20, T = 16, B = 34;
+  const x = k => L + (W - L - R) * (k - 1) / 19;
+  const y = v => T + (H - T - B) * (1 - v);
+  const s = svg(W, H, document.getElementById("recall"));
+  for (const v of [0, .25, .5, .75, 1]) {
+    el("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), class: v ? "gridline" : "axis" }, s);
+    el("text", { x: L - 8, y: y(v) + 4, "text-anchor": "end" }, s).textContent = Math.round(v * 100) + "%";
+  }
+  for (const k of [1, 4, 8, 12, 16, 20]) el("text", { x: x(k), y: H - 12, "text-anchor": "middle" }, s).textContent = k;
+  el("text", { x: W - R, y: H, "text-anchor": "end" }, s).textContent = "passages given to Apertus (k)";
+  for (const k of [8, 16]) {
+    el("line", { x1: x(k), x2: x(k), y1: T, y2: H - B, stroke: "var(--text-muted)", "stroke-dasharray": "3 3", "stroke-width": 1 }, s);
+    const t = el("text", { x: x(k) + 6, y: T + 12, class: "val" }, s);
+    t.textContent = `k=${k}: F1 ${f1[k].toFixed(3)}`;
+  }
+  el("polyline", { points: pts.map(([k, v]) => `${x(k)},${y(v)}`).join(" "), fill: "none",
+    stroke: "var(--series-1)", "stroke-width": 2, "stroke-linejoin": "round" }, s);
+  for (const [k, v] of pts) {
+    el("circle", { cx: x(k), cy: y(v), r: 4.5, fill: "var(--series-1)", stroke: "var(--surface-1)", "stroke-width": 2 }, s);
+    const hit = el("circle", { cx: x(k), cy: y(v), r: 14, class: "hit" }, s);
+    hover(hit, `<b>top ${k}</b><br>right passage found: ${(v * 100).toFixed(1)}%`);
+  }
+  el("text", { x: x(20) - 6, y: y(.9201) + 20, "text-anchor": "end", class: "val" }, s).textContent = "92% at k=20";
+})();
+
+// 3. Confusion matrix, sequential blue by row share.
+(function () {
+  const m = [[292, 21, 22], [1, 305, 18], [13, 31, 273]];
+  const labs = ["supports", "doesn't settle", "contradicts"];
+  const W = 420, H = 300, L = 104, T = 40, cw = (W - L - 8) / 3, ch = 72;
+  const s = svg(W, H, document.getElementById("cm"));
+  el("text", { x: L + 1.5 * cw, y: 12, "text-anchor": "middle" }, s).textContent = "Apertus said →";
+  labs.forEach((l, j) => { el("text", { x: L + cw * (j + .5), y: T - 8, "text-anchor": "middle" }, s).textContent = l; });
+  const steps = ["--seq-0", "--seq-1", "--seq-2", "--seq-3", "--seq-4", "--seq-5"];
+  m.forEach((row, i) => {
+    const tot = row.reduce((a, b) => a + b, 0);
+    el("text", { x: L - 8, y: T + ch * i + ch / 2 + 4, "text-anchor": "end" }, s).textContent = labs[i];
+    row.forEach((v, j) => {
+      const share = v / tot;
+      const step = share > .5 ? 5 : share > .08 ? 2 : share > .03 ? 1 : 0;
+      el("rect", { x: L + cw * j + 1, y: T + ch * i + 1, width: cw - 2, height: ch - 2, rx: 4,
+        fill: `var(${steps[step]})` }, s);
+      const t = el("text", { x: L + cw * (j + .5), y: T + ch * i + ch / 2 + 5, "text-anchor": "middle", class: "val" }, s);
+      t.textContent = v;
+      if (step === 5) t.setAttribute("style", "fill: var(--surface-1)");
+      const hit = el("rect", { x: L + cw * j, y: T + ch * i, width: cw, height: ch, class: "hit" }, s);
+      hover(hit, `true: <b>${labs[i]}</b><br>Apertus: <b>${labs[j]}</b><br>${v} claims (${(share * 100).toFixed(1)}% of row)`);
+    });
+  });
+  el("text", { x: 4, y: T + 1.5 * ch, transform: `rotate(-90 12 ${T + 1.5 * ch})`, "text-anchor": "middle" }, s).textContent = "true answer";
+})();
+
+// 4. Macro-F1 by language group: dots, since the axis does not start at zero.
+(function () {
+  const rows = [
+    ["booklet in German", 0.8658, 297], ["booklet in French", 0.898, 363], ["booklet in Italian", 0.9076, 316],
+    ["claim in German", 0.883, 316], ["claim in French", 0.8991, 328], ["claim in Italian", 0.89, 332],
+    ["claim ≠ booklet language", 0.899, 641], ["claim = booklet language", 0.8745, 335],
+  ];
+  const W = 420, rowH = 30, L = 170, R = 52, T = 6, H = T + rows.length * rowH + 12 + 22;
+  const lo = 0.8, hi = 0.95, x = v => L + (W - L - R) * (v - lo) / (hi - lo);
+  const s = svg(W, H, document.getElementById("lang"));
+  for (const v of [0.8, 0.85, 0.9, 0.95]) {
+    el("line", { x1: x(v), x2: x(v), y1: T, y2: H - 20, class: "gridline" }, s);
+    el("text", { x: x(v), y: H - 4, "text-anchor": "middle" }, s).textContent = v.toFixed(2);
+  }
+  rows.forEach(([name, v, n], i) => {
+    const y = T + i * rowH + (i >= 3 ? 6 : 0) + (i >= 6 ? 6 : 0);
+    el("text", { x: L - 8, y: y + 15, "text-anchor": "end" }, s).textContent = name;
+    el("line", { x1: L, x2: x(v), y1: y + 13, y2: y + 13, stroke: "var(--grid)", "stroke-width": 2 }, s);
+    el("circle", { cx: x(v), cy: y + 13, r: 5, fill: "var(--series-1)", stroke: "var(--surface-1)", "stroke-width": 2 }, s);
+    el("text", { x: x(v) + 10, y: y + 17, class: "val" }, s).textContent = v.toFixed(3);
+    const hit = el("rect", { x: 0, y, width: W, height: rowH, class: "hit" }, s);
+    hover(hit, `<b>${name}</b><br>macro-F1 ${v.toFixed(3)} · ${n} claims`);
+  });
+  s.setAttribute("viewBox", `0 0 ${W} ${H + 12}`);
+  el("text", { x: L, y: H + 10 }, s).textContent = "axis starts at 0.80";
+  document.getElementById("langtable").innerHTML = "<tr><th>Group</th><th class='r'>Macro-F1</th><th class='r'>n</th></tr>" +
+    rows.map(([a, v, n]) => `<tr><td>${a}</td><td class='r'>${v.toFixed(3)}</td><td class='r'>${n}</td></tr>`).join("");
+})();
+</script>
+</body>
+</html>

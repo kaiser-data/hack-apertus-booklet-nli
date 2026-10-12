@@ -25,3 +25,9 @@ build/
 .DS_Store
 .idea/
 .vscode/
+
+# Local handoff notes
+HANDOFF.md
+
+# local knowledge-graph output (graphify)
+graphify-out/

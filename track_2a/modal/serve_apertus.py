@@ -29,6 +29,8 @@ PORT = 8000
 image = (
     modal.Image.from_registry(IMAGE)
     .entrypoint([])
+    # The image's hf_xet fails on this repo ("Unable to parse string as hex hash value").
+    .env({"HF_HUB_DISABLE_XET": "1"})
     .run_commands(
         "(command -v uv >/dev/null && uv pip install --python /opt/venv/bin/python 'modal==1.5.3')"
         " || /opt/venv/bin/python -m pip install 'modal==1.5.3'"
