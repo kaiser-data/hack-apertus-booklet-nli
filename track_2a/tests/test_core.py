@@ -1,4 +1,9 @@
+import json
+
+import pytest
+
 from booklet_nli.booklet import _clean
+from booklet_nli.cli import _check_resume
 from booklet_nli.data import select, split_of
 from booklet_nli.metrics import bootstrap_ci, macro_f1, overlaps_reference, paired_diff
 from booklet_nli.nli import parse_verdict
@@ -62,3 +67,15 @@ def test_paired_diff_is_zero_for_identical_runs():
     gold = [0, 1, 2] * 10
     pred = [0, 1, 1] * 10
     assert paired_diff(gold, pred, pred, n=200) == {"diff": 0.0, "ci95": [0.0, 0.0]}
+
+
+def test_resume_refuses_a_run_with_different_settings(tmp_path):
+    cfg = {"model": "m", "mode": "rag", "k": 16, "embedder": "e", "split": "dev", "limit": 150,
+           "seed": 0, "max_tokens": 600}
+    old = {**cfg, "limit": 30}
+    del old["max_tokens"]  # recorded before the cap was: means 300
+    (tmp_path / "metrics.json").write_text(json.dumps({"config": old}))
+    with pytest.raises(SystemExit):
+        _check_resume(tmp_path, cfg, resuming=True)
+    _check_resume(tmp_path, {**cfg, "max_tokens": 300}, resuming=True)  # only limit differs
+    _check_resume(tmp_path, cfg, resuming=False)  # nothing to resume

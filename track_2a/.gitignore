@@ -42,4 +42,6 @@ runs/*
 !runs/retrieval-dev-parser-v3.json
 !runs/retrieval-dev-parser-v3-vote.json
 !runs/retrieval-dev-parser-v4.json
+!runs/dev-rag-k16-n150-max600/
+!runs/test-full-n60-max600/
 runs/**/*.log

@@ -11,7 +11,7 @@ from .config import llm_config
 from .data import load_rows, select
 from .llm import LLM
 from .metrics import macro_f1, overlaps_reference, paired_diff, summarize
-from .nli import select_context, verify
+from .nli import MAX_TOKENS, select_context, verify
 from .retrieve import DEFAULT_EMBEDDER, rank
 
 
@@ -49,6 +49,19 @@ def _prefetch(booklets: set[str]) -> None:
         extract_passages(fetch_pdf(b))
 
 
+def _check_resume(out_dir: Path, config: dict, resuming: bool) -> None:
+    """Refuse to add rows to a run directory that was produced with different settings."""
+    path = out_dir / "metrics.json"
+    if not resuming or not path.exists():
+        return
+    old = json.loads(path.read_text()).get("config") or {}
+    old.setdefault("max_tokens", 300)  # runs before the cap was recorded used 300
+    diff = {k: (old.get(k), v) for k, v in config.items()
+            if k not in ("limit", "model") and old.get(k) != v}
+    if diff:
+        sys.exit(f"{out_dir} was run with different settings {diff}; use a new --out directory")
+
+
 def cmd_eval(args: argparse.Namespace) -> None:
     rows = select(load_rows(args.dataset), args.split, args.limit, args.seed)
     out_dir = Path(args.out)
@@ -59,8 +72,12 @@ def cmd_eval(args: argparse.Namespace) -> None:
         done = {r["id"]: r for r in map(json.loads, pred_path.read_text().splitlines())}
     todo = [r for r in rows if r["id"] not in done]
     print(f"{len(rows)} rows, {len(done)} already done, {len(todo)} to run", file=sys.stderr)
-    _prefetch({r["booklet_url"] for r in todo})
     llm = LLM(llm_config())
+    config = {"model": llm.model, "mode": args.mode, "k": args.k, "embedder": args.embedder,
+              "split": args.split, "limit": args.limit, "seed": args.seed,
+              "max_tokens": MAX_TOKENS}
+    _check_resume(out_dir, config, bool(done and todo))
+    _prefetch({r["booklet_url"] for r in todo})
 
     def run(row: dict) -> dict:
         v = verify(llm, row["booklet_url"], row["claim"], args.mode, args.k, args.embedder)
@@ -91,9 +108,7 @@ def cmd_eval(args: argparse.Namespace) -> None:
 
     wanted = {r["id"] for r in rows}
     metrics = summarize([done[i] for i in sorted(wanted)])
-    metrics["config"] = {"model": llm.model, "mode": args.mode, "k": args.k,
-                         "embedder": args.embedder, "split": args.split, "limit": args.limit,
-                         "seed": args.seed}
+    metrics["config"] = config
     (out_dir / "metrics.json").write_text(json.dumps(metrics, indent=2))
     print(json.dumps(metrics, indent=2))
 

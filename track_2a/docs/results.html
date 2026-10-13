@@ -72,7 +72,10 @@ svg text { fill: var(--text-secondary); font-size: 12px; }
 svg .val { fill: var(--text-primary); font-weight: 600; }
 svg .axis { stroke: var(--border); }
 svg .gridline { stroke: var(--grid); }
-.hit { fill: transparent; cursor: default; }
+.hit { fill: transparent; cursor: default; outline: none; }
+.hit:focus-visible { stroke: var(--text-primary); stroke-width: 1.5; }
+.band { fill: var(--series-1); fill-opacity: .14; }
+.legend span.hollow::before { background: transparent; border: 2px solid var(--c); width: 6px; height: 6px; border-radius: 50%; }
 #tip { position: fixed; pointer-events: none; background: var(--surface-1); color: var(--text-primary);
   border: 1px solid var(--border); border-radius: 6px; padding: 6px 9px; font-size: 12px; line-height: 1.4;
   box-shadow: 0 4px 14px rgba(0,0,0,.12); opacity: 0; transition: opacity .08s; z-index: 10; max-width: 260px; }
@@ -158,43 +161,60 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
   </div>
 </section>
 
+
 <section>
   <h2>Reading less is as good as reading everything, at a ninth of the cost</h2>
   <p class="lede">The same 60 test claims, judged two ways: Apertus given the whole booklet (~31k tokens), or only the 16 retrieved passages.
-  The long input doesn't help an 8B model, and it is much slower and more expensive.
-  Raw macro-F1 favours retrieval by +0.127 (95% CI +0.012 to +0.252), but part of that is our own setup: every “unparseable” answer
-  was cut off at the 300-token output cap we set, and 5 of the 11 claims only retrieval got right are such cut-offs.
-  Leaving out the 6 cut-off claims, the gap is +0.053 (95% CI −0.056 to +0.168): comparable accuracy, 9× fewer tokens.</p>
+  With the whole booklet, 6 of 60 answers never finish: Apertus starts listing passage numbers 150, 151, 152, … and never writes its label.
+  Doubling the output budget didn't help (6 failures again). Counting those as “doesn't settle”, retrieval leads by +0.127 (95% CI +0.012 to +0.252);
+  leaving them out, by +0.053 (95% CI −0.056 to +0.168). Comparable accuracy at worst, more reliable, 9× fewer tokens.</p>
   <div class="card">
-    <div class="legend"><span style="--c: var(--series-1)">16 retrieved passages (ours)</span><span style="--c: var(--series-2)">whole booklet</span></div>
+    <div class="legend"><span style="--c: var(--series-1)">16 retrieved passages (ours)</span><span style="--c: var(--series-2)">whole booklet</span><span class="hollow" style="--c: var(--series-2)">whole booklet, rerun with 600-token cap</span></div>
     <div class="grid2" id="cmp"></div>
     <details><summary>Table view</summary>
-      <table><tr><th>Same 60 test claims</th><th class="r">Macro-F1</th><th class="r">Prompt tokens</th><th class="r">s/claim (median)</th><th class="r">Cut off at 300 tokens</th></tr>
-      <tr><td>16 retrieved passages</td><td class="r">0.861</td><td class="r">3,446</td><td class="r">4.4</td><td class="r">1</td></tr>
-      <tr><td>Whole booklet</td><td class="r">0.735</td><td class="r">31,402</td><td class="r">52.4*</td><td class="r">6</td></tr></table>
-      <p>* Inflated: 12 long requests shared one GPU at once. With the same setting on dev it was 15.5 s, still ~3× slower.</p>
+      <table><tr><th>Same 60 test claims</th><th class="r">Macro-F1 (95% CI)</th><th class="r">Prompt tokens</th><th class="r">s/claim (median)</th><th class="r">Answers that never finish</th></tr>
+      <tr><td>16 retrieved passages</td><td class="r">0.861 (0.754–0.946)</td><td class="r">3,446</td><td class="r">4.4</td><td class="r">1</td></tr>
+      <tr><td>Whole booklet</td><td class="r">0.735 (0.614–0.842)</td><td class="r">31,402</td><td class="r">52.4*</td><td class="r">6</td></tr>
+      <tr><td>Whole booklet, rerun, 600-token cap</td><td class="r">0.771 (0.652–0.871)</td><td class="r">31,402</td><td class="r">61.9*</td><td class="r">6</td></tr></table>
+      <p>* Inflated: 12 long requests shared one GPU at once (the rerun also shared it with a dev run). With the same setting on dev it was 15.5 s, still ~3× slower.</p>
     </details>
   </div>
 </section>
 
 <section>
   <h2>How many passages to give it</h2>
-  <p class="lede">The line shows how often the right passage is among the top <i>k</i> the search returns (dev split).
-  At 8 passages it is missing a quarter of the time; at 16, about one time in ten. That, together with the F1 gain from 8 to 16 on dev
-  (+0.041, 95% CI −0.005 to +0.091, suggestive on its own), is why we chose 16, before touching the test split. The test score (0.891) later matched dev (0.890).</p>
+  <p class="lede">How often the right passage is among the top <i>k</i> the search returns (dev split).
+  At 8 passages it is missing a quarter of the time; at 16, about one time in ten. That, together with the F1 gain from 8 to 16 on dev,
+  is why we chose 16, before touching the test split. A better passage cutter (orange) finds the passage more often, but did not raise F1.</p>
   <div class="card">
     <p class="chart-title">Search finds the annotated passage within the top k</p>
-    <p class="chart-sub">Retrieval recall@k, dev split, 338 claims with a reference passage. Labels show Apertus's macro-F1 at that k (dev, 150 claims).</p>
+    <p class="chart-sub">Retrieval recall@k, dev split, 338 claims with a reference passage. Vertical lines mark the two k values run end to end, with Apertus's dev macro-F1.</p>
+    <div class="legend"><span style="--c: var(--series-1)">passage cutter v2 (used for all results)</span><span style="--c: var(--series-2)">cutter v4 (tested later, not adopted: F1 0.878)</span></div>
     <div id="recall"></div>
     <details><summary>Table view</summary>
-      <table><tr><th>k</th><th class="r">Recall@k</th><th class="r">Macro-F1 (dev)</th><th class="r">Prompt tokens</th></tr>
-      <tr><td>1</td><td class="r">0.31</td><td class="r">–</td><td class="r">–</td></tr>
-      <tr><td>3</td><td class="r">0.56</td><td class="r">–</td><td class="r">–</td></tr>
-      <tr><td>5</td><td class="r">0.68</td><td class="r">–</td><td class="r">–</td></tr>
-      <tr><td>8</td><td class="r">0.77</td><td class="r">0.850</td><td class="r">1,818</td></tr>
-      <tr><td>12</td><td class="r">0.85</td><td class="r">–</td><td class="r">–</td></tr>
-      <tr><td>16</td><td class="r">0.91</td><td class="r">0.890</td><td class="r">3,354</td></tr>
-      <tr><td>20</td><td class="r">0.93</td><td class="r">–</td><td class="r">–</td></tr></table>
+      <table><tr><th>k</th><th class="r">Recall@k, v2</th><th class="r">Recall@k, v4</th><th class="r">Macro-F1 (dev, v2)</th><th class="r">Prompt tokens</th></tr>
+      <tr><td>1</td><td class="r">0.31</td><td class="r">0.35</td><td class="r">–</td><td class="r">–</td></tr>
+      <tr><td>3</td><td class="r">0.56</td><td class="r">0.58</td><td class="r">–</td><td class="r">–</td></tr>
+      <tr><td>5</td><td class="r">0.68</td><td class="r">0.69</td><td class="r">–</td><td class="r">–</td></tr>
+      <tr><td>8</td><td class="r">0.77</td><td class="r">0.81</td><td class="r">0.850</td><td class="r">1,818</td></tr>
+      <tr><td>12</td><td class="r">0.85</td><td class="r">0.86</td><td class="r">–</td><td class="r">–</td></tr>
+      <tr><td>16</td><td class="r">0.91</td><td class="r">0.93</td><td class="r">0.890</td><td class="r">3,354</td></tr>
+      <tr><td>20</td><td class="r">0.93</td><td class="r">0.95</td><td class="r">–</td><td class="r">–</td></tr></table>
+    </details>
+  </div>
+</section>
+
+<section>
+  <h2>How sure can we be?</h2>
+  <p class="lede">Every dev score with its 95% interval. Running the chosen setup twice, unchanged, gave 0.890 and 0.864 (shaded):
+  GPU inference is not bit-exact even at temperature 0. Two of the three variants land inside that gap and k=8 just below it,
+  so none of them is clearly distinguishable from the chosen setup on F1 alone. The test score is a single run on 976 claims, hence its narrower interval.</p>
+  <div class="card">
+    <p class="chart-title">Macro-F1 with 95% bootstrap interval</p>
+    <p class="chart-sub">Dev rows use the same 150 claims. Intervals resample claims, not runs, so they understate the spread between runs.</p>
+    <div id="forest"></div>
+    <details><summary>Table view</summary>
+      <table id="foresttable"></table>
     </details>
   </div>
 </section>
@@ -206,12 +226,15 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
   <div class="grid2">
     <div class="card">
       <p class="chart-title">True answer vs Apertus's answer</p>
-      <p class="chart-sub">Counts, shaded by share of the row</p>
+      <p class="chart-sub">Counts; darker means a larger share of the row</p>
       <div id="cm"></div>
+      <details><summary>Table view</summary>
+        <table id="cmtable"></table>
+      </details>
     </div>
     <div class="card">
       <p class="chart-title">Macro-F1 by language</p>
-      <p class="chart-sub">Test split. Claims in a different language from the booklet score no worse.</p>
+      <p class="chart-sub">Test split, 95% intervals. Claims in a different language from the booklet score no worse.</p>
       <div id="lang"></div>
       <details><summary>Table view</summary>
         <table id="langtable"></table>
@@ -224,15 +247,17 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
       <li><b>Multi-vote booklets.</b> One booklet covers several votes; the search sometimes returns passages about the wrong vote (e.g. pension reform for a farming claim).</li>
       <li><b>Prompt tweaks didn't fix contradictions.</b> An extra rule (“if the passages cover the point and differ, it's a contradiction”) lowered dev F1 from 0.890 to 0.864, so it was dropped.</li>
       <li><b>Data changes tested after the test run (dev only, not adopted):</b> better passage cutting raised retrieval recall@16 from 0.911 to 0.926 but not the F1 (0.890 → 0.878, within noise); restricting the search to one vote section lowered recall to 0.823.</li>
+      <li><b>Reruns aren't identical.</b> Running the chosen setup again on dev changed 5 of 150 answers (F1 0.890 → 0.864), even at temperature 0: GPU batching isn't bit-exact. Differences of ~0.03 between single runs are noise.</li>
       <li><b>Deliberately not used:</b> fine-tuning on six dev vote dates, XNLI/ANLI (non-commercial licence, no Italian in XNLI), and laws or debates as evidence (the question is what the <i>booklet</i> says).</li>
-      <li><b>Next:</b> let Apertus pick the vote from the booklet's table of contents first, and re-rank passages before it sees them.</li>
+      <li><b>Next:</b> stop runaway evidence lists (label first, short list), let Apertus pick the vote from the table of contents, re-rank passages.</li>
     </ul>
   </div>
 </section>
 
 <footer>
-  Numbers from <code>track_2a/runs/test-rag-k16-n976</code>, <code>test-full-n60</code>, <code>dev-rag-k8-n150</code>,
-  <code>dev-rag-k16-n150</code> and <code>retrieval-dev-parser-v2.json</code>.
+  Numbers from <code>track_2a/runs/</code>: <code>test-rag-k16-n976</code>, <code>test-full-n60</code>, <code>test-full-n60-max600</code>,
+  <code>dev-rag-k8-n150</code>, <code>dev-rag-k16-n150</code>, <code>dev-rag-k16-n150-max600</code>, the two <code>rejected-*</code> dev runs,
+  <code>retrieval-dev-parser-v2.json</code> and <code>retrieval-dev-parser-v4.json</code>.
   Dataset: OSTswiss/MNLIoverSwissVotingBooklets v1.1 (MIT), split by vote date. Full write-up: <code>kaiser-data_Report.pdf</code>.
 </footer>
 </main>
@@ -247,14 +272,19 @@ function el(tag, attrs = {}, parent) {
   if (parent) parent.appendChild(e);
   return e;
 }
-function svg(w, h, host) { return el("svg", { viewBox: `0 0 ${w} ${h}`, role: "img" }, host); }
+function svg(w, h, host, label) { return el("svg", { viewBox: `0 0 ${w} ${h}`, role: "img", "aria-label": label }, host); }
+function place(x, y) {
+  tip.style.left = Math.min(x + 14, innerWidth - tip.offsetWidth - 8) + "px";
+  tip.style.top = (y + 14) + "px";
+}
+// Tooltip on hover and on keyboard focus; every value is also in a table view.
 function hover(node, html) {
-  node.addEventListener("mousemove", ev => {
-    tip.innerHTML = html; tip.style.opacity = 1;
-    const x = Math.min(ev.clientX + 14, innerWidth - tip.offsetWidth - 8);
-    tip.style.left = x + "px"; tip.style.top = (ev.clientY + 14) + "px";
-  });
-  node.addEventListener("mouseleave", () => { tip.style.opacity = 0; });
+  node.setAttribute("tabindex", "0");
+  node.setAttribute("aria-label", html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+  const show = () => { tip.innerHTML = html; tip.style.opacity = 1; };
+  node.addEventListener("mousemove", ev => { show(); place(ev.clientX, ev.clientY); });
+  node.addEventListener("focus", () => { show(); const r = node.getBoundingClientRect(); place(r.left + r.width / 2, r.top + r.height / 2); });
+  for (const ev of ["mouseleave", "blur"]) node.addEventListener(ev, () => { tip.style.opacity = 0; });
 }
 // Horizontal bar with a 4px rounded data end anchored at the baseline.
 function hbar(g, x0, y, len, h, color) {
@@ -262,47 +292,82 @@ function hbar(g, x0, y, len, h, color) {
   const d = `M${x0},${y} h${len - r} a${r},${r} 0 0 1 ${r},${r} v${h - 2 * r} a${r},${r} 0 0 1 ${-r},${r} h${-(len - r)} Z`;
   return el("path", { d, fill: color }, g);
 }
-function vbar(g, x, y0, w, len, color) {
-  const r = Math.min(4, len / 2, w / 2);
-  const d = `M${x},${y0} v${-(len - r)} a${r},${r} 0 0 1 ${r},${-r} h${w - 2 * r} a${r},${r} 0 0 1 ${r},${r} v${len - r} Z`;
-  return el("path", { d, fill: color }, g);
+// Dot with a 2px surface ring; hollow = second run of the same setup.
+function dot(g, cx, cy, color, hollow) {
+  return el("circle", { cx, cy, r: 5, fill: hollow ? "var(--surface-1)" : color,
+    stroke: hollow ? color : "var(--surface-1)", "stroke-width": 2 }, g);
 }
+function whisker(g, x1, x2, y, color) {
+  el("line", { x1, x2, y1: y, y2: y, stroke: color, "stroke-width": 2, "stroke-linecap": "round" }, g);
+}
+const f3 = v => v.toFixed(3);
+// Wide charts get a narrower canvas on phones, so their text keeps a readable size.
+const narrow = id => document.getElementById(id).clientWidth < 600;
 
 // 1. Comparison small multiples: one measure per panel, one scale each.
-const panels = [
-  { title: "Macro-F1", sub: "higher is better", vals: [0.861, 0.735], fmt: v => v.toFixed(3), max: 1 },
-  { title: "Prompt tokens per claim", sub: "lower is cheaper", vals: [3446, 31402], fmt: v => v.toLocaleString("en-US"), max: 32000 },
-  { title: "Seconds per claim (median)", sub: "lower is faster · whole-booklet value inflated by GPU queueing", vals: [4.4, 52.4], fmt: v => v.toFixed(1) + " s", max: 55 },
-  { title: "Answers cut off at our 300-token cap (of 60)", sub: "counted as neutral · lower is better", vals: [1, 6], fmt: v => String(v), max: 7 },
-];
-const names = ["16 passages", "whole booklet"];
-const colors = ["var(--series-1)", "var(--series-2)"];
-const cmp = document.getElementById("cmp");
-for (const p of panels) {
-  const box = document.createElement("div");
-  box.innerHTML = `<p class="chart-title">${p.title}</p><p class="chart-sub">${p.sub}</p>`;
-  cmp.appendChild(box);
-  const W = 420, H = 86, L = 104, R = 70;
-  const s = svg(W, H, box);
-  p.vals.forEach((v, i) => {
-    const y = 10 + i * 36, len = Math.max(2, (W - L - R) * v / p.max);
-    el("text", { x: L - 8, y: y + 16, "text-anchor": "end" }, s).textContent = names[i];
-    hbar(s, L, y, len, 24, colors[i]);
-    el("text", { x: L + len + 6, y: y + 16, class: "val" }, s).textContent = p.fmt(v);
-    const hit = el("rect", { x: 0, y: y - 4, width: W, height: 32, class: "hit" }, s);
-    hover(hit, `<b>${names[i]}</b><br>${p.title}: ${p.fmt(v)}`);
-  });
-  el("line", { x1: L, x2: L, y1: 4, y2: H - 4, class: "axis" }, s);
-}
-
-// 2. Recall@k line with the two evaluated k values called out.
 (function () {
-  const pts = [[1, .3107], [3, .5562], [5, .6775], [8, .7692], [12, .8491], [16, .9112], [20, .929]];
+  const names = ["16 passages", "whole booklet", "rerun, 600 cap"];
+  const colors = ["var(--series-1)", "var(--series-2)", "var(--series-2)"];
+  const cmp = document.getElementById("cmp");
+  const W = 420, L = 112, R = 70, rowH = 30, T = 8;
+  const panel = (title, sub) => {
+    const box = document.createElement("div");
+    box.innerHTML = `<p class="chart-title">${title}</p><p class="chart-sub">${sub}</p>`;
+    cmp.appendChild(box);
+    return box;
+  };
+  // F1 as dot + interval: the intervals overlap, which a bar would hide.
+  {
+    const box = panel("Macro-F1, 95% interval", "higher is better · axis starts at 0.5");
+    const f1 = [[0.861, 0.754, 0.946], [0.735, 0.614, 0.842], [0.771, 0.652, 0.871]];
+    const H = T + 3 * rowH + 24, lo = 0.5, hi = 1, x = v => L + (W - L - R) * (v - lo) / (hi - lo);
+    const s = svg(W, H, box, "Macro-F1 with intervals for the three runs");
+    for (const v of [0.5, 0.75, 1]) {
+      el("line", { x1: x(v), x2: x(v), y1: T - 4, y2: H - 20, class: "gridline" }, s);
+      el("text", { x: x(v), y: H - 4, "text-anchor": "middle" }, s).textContent = v.toFixed(2);
+    }
+    f1.forEach(([v, a, b], i) => {
+      const y = T + i * rowH + 12;
+      el("text", { x: L - 10, y: y + 4, "text-anchor": "end" }, s).textContent = names[i];
+      whisker(s, x(a), x(b), y, colors[i]);
+      dot(s, x(v), y, colors[i], i === 2);
+      el("text", { x: x(b) + 8, y: y + 4, class: "val" }, s).textContent = f3(v);
+      hover(el("rect", { x: 0, y: y - rowH / 2, width: W, height: rowH, class: "hit" }, s),
+        `<b>${names[i]}</b><br>macro-F1 ${f3(v)} (95% CI ${f3(a)}–${f3(b)})`);
+    });
+  }
+  const bars = [
+    { title: "Prompt tokens per claim", sub: "lower is cheaper", vals: [3446, 31402, 31402], fmt: v => v.toLocaleString("en-US"), max: 32000 },
+    { title: "Seconds per claim (median)", sub: "lower is faster · whole-booklet values inflated by GPU queueing", vals: [4.4, 52.4, 61.9], fmt: v => v.toFixed(1) + " s", max: 64 },
+    { title: "Answers that never finish (of 60)", sub: "runaway evidence list, counted as neutral", vals: [1, 6, 6], fmt: v => String(v), max: 7 },
+  ];
+  for (const p of bars) {
+    const box = panel(p.title, p.sub);
+    const H = T + 3 * rowH + 2;
+    const s = svg(W, H, box, p.title);
+    p.vals.forEach((v, i) => {
+      const y = T + i * rowH, len = Math.max(2, (W - L - R) * v / p.max), c = colors[i];
+      el("text", { x: L - 10, y: y + 15, "text-anchor": "end" }, s).textContent = names[i];
+      const bar = hbar(s, L, y + 2, len, 20, c);
+      if (i === 2) { bar.setAttribute("fill", "var(--surface-1)"); bar.setAttribute("stroke", c); bar.setAttribute("stroke-width", 2); }
+      el("text", { x: L + len + 6, y: y + 16, class: "val" }, s).textContent = p.fmt(v);
+      hover(el("rect", { x: 0, y, width: W, height: rowH, class: "hit" }, s), `<b>${names[i]}</b><br>${p.title}: ${p.fmt(v)}`);
+    });
+    el("line", { x1: L, x2: L, y1: T - 2, y2: H, class: "axis" }, s);
+  }
+})();
+
+// 2. Recall@k for two passage cutters, with the two evaluated k values called out.
+(function () {
+  const series = [
+    { name: "cutter v2", color: "var(--series-1)", pts: [[1, .3107], [3, .5562], [5, .6775], [8, .7692], [12, .8491], [16, .9112], [20, .929]] },
+    { name: "cutter v4", color: "var(--series-2)", pts: [[1, .3462], [3, .5769], [5, .6893], [8, .8077], [12, .8609], [16, .926], [20, .9497]] },
+  ];
   const f1 = { 8: 0.850, 16: 0.890 };
-  const W = 860, H = 260, L = 44, R = 20, T = 16, B = 34;
+  const W = narrow("recall") ? 460 : 860, H = 270, L = 44, R = 96, T = 22, B = 34;
   const x = k => L + (W - L - R) * (k - 1) / 19;
   const y = v => T + (H - T - B) * (1 - v);
-  const s = svg(W, H, document.getElementById("recall"));
+  const s = svg(W, H, document.getElementById("recall"), "Retrieval recall at k for two passage cutters");
   for (const v of [0, .25, .5, .75, 1]) {
     el("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), class: v ? "gridline" : "axis" }, s);
     el("text", { x: L - 8, y: y(v) + 4, "text-anchor": "end" }, s).textContent = Math.round(v * 100) + "%";
@@ -310,74 +375,119 @@ for (const p of panels) {
   for (const k of [1, 4, 8, 12, 16, 20]) el("text", { x: x(k), y: H - 12, "text-anchor": "middle" }, s).textContent = k;
   el("text", { x: W - R, y: H, "text-anchor": "end" }, s).textContent = "passages given to Apertus (k)";
   for (const k of [8, 16]) {
-    el("line", { x1: x(k), x2: x(k), y1: T, y2: H - B, stroke: "var(--text-muted)", "stroke-dasharray": "3 3", "stroke-width": 1 }, s);
-    const t = el("text", { x: x(k) + 6, y: T + 12, class: "val" }, s);
-    t.textContent = `k=${k}: F1 ${f1[k].toFixed(3)}`;
+    el("line", { x1: x(k), x2: x(k), y1: T - 6, y2: H - B, stroke: "var(--text-muted)", "stroke-width": 1 }, s);
+    el("text", { x: x(k) - 6, y: T - 10, "text-anchor": "end", class: "val" }, s).textContent = `k=${k}: F1 ${f3(f1[k])}`;
   }
-  el("polyline", { points: pts.map(([k, v]) => `${x(k)},${y(v)}`).join(" "), fill: "none",
-    stroke: "var(--series-1)", "stroke-width": 2, "stroke-linejoin": "round" }, s);
-  for (const [k, v] of pts) {
-    el("circle", { cx: x(k), cy: y(v), r: 4.5, fill: "var(--series-1)", stroke: "var(--surface-1)", "stroke-width": 2 }, s);
-    const hit = el("circle", { cx: x(k), cy: y(v), r: 14, class: "hit" }, s);
-    hover(hit, `<b>top ${k}</b><br>right passage found: ${(v * 100).toFixed(1)}%`);
+  for (const sr of series) {
+    el("polyline", { points: sr.pts.map(([k, v]) => `${x(k)},${y(v)}`).join(" "), fill: "none",
+      stroke: sr.color, "stroke-width": 2, "stroke-linejoin": "round" }, s);
+    for (const [k, v] of sr.pts) {
+      el("circle", { cx: x(k), cy: y(v), r: 4.5, fill: sr.color, stroke: "var(--surface-1)", "stroke-width": 2 }, s);
+    }
+    const [kl, vl] = sr.pts[sr.pts.length - 1];
+    el("text", { x: x(kl) + 10, y: y(vl) + (sr.name === "cutter v4" ? -2 : 12), class: "val" }, s).textContent = `${sr.name} ${Math.round(vl * 100)}%`;
   }
-  el("text", { x: x(16) + 6, y: y(.9112) + 20, class: "val" }, s).textContent = "91% at k=16";
+  // One hit target per k carrying both series, so the points never compete for the pointer.
+  series[0].pts.forEach(([k], i) => {
+    const html = `<b>top ${k}</b><br>` + series.map(sr => `${sr.name}: ${(sr.pts[i][1] * 100).toFixed(1)}%`).join("<br>") +
+      (f1[k] ? `<br>dev macro-F1 (v2): ${f3(f1[k])}` : "");
+    hover(el("rect", { x: x(k) - 14, y: T, width: 28, height: H - T - B, class: "hit" }, s), html);
+  });
 })();
 
-// 3. Confusion matrix, sequential blue by row share.
+// 3. Forest plot: every dev and test score with its interval, against the rerun gap.
+(function () {
+  const rows = [
+    { g: "Test, held out, run once (976 claims)" },
+    { name: "k=16 (chosen)", v: 0.891, ci: [0.871, 0.909], c: "var(--series-1)" },
+    { g: "Dev, same 150 claims" },
+    { name: "k=16 (chosen)", v: 0.890, ci: [0.836, 0.936], c: "var(--series-1)" },
+    { name: "k=16, identical rerun", v: 0.864, ci: [0.804, 0.916], c: "var(--series-1)", hollow: true },
+    { name: "k=8", v: 0.850, ci: [0.786, 0.903], c: "var(--text-muted)" },
+    { name: "k=16 + contradiction rule", v: 0.864, ci: [0.805, 0.916], c: "var(--text-muted)" },
+    { name: "k=16 + passage cutter v4", v: 0.878, ci: [0.821, 0.926], c: "var(--text-muted)" },
+  ];
+  const W = narrow("forest") ? 460 : 860, L = W < 860 ? 165 : 210, R = W < 860 ? 50 : 70, rowH = 30, gH = 26, T = 4;
+  let yy = T;
+  for (const r of rows) { r.y = yy + (r.g ? 18 : rowH / 2); yy += r.g ? gH : rowH; }
+  const H = yy + 30, lo = 0.75, hi = 0.95, x = v => L + (W - L - R) * (v - lo) / (hi - lo);
+  const s = svg(W, H, document.getElementById("forest"), "Macro-F1 with intervals for every test and dev run");
+  const dev = rows.filter(r => r.v && rows.indexOf(r) > 2);
+  const top = dev[0].y - rowH / 2, bot = dev[dev.length - 1].y + rowH / 2;
+  el("rect", { x: x(0.864), y: top, width: x(0.890) - x(0.864), height: bot - top, class: "band" }, s);
+  el("text", { x: x(0.877), y: H - 22, "text-anchor": "middle" }, s).textContent = "gap between two identical runs";
+  for (const v of [0.75, 0.8, 0.85, 0.9, 0.95]) {
+    el("line", { x1: x(v), x2: x(v), y1: T, y2: H - 34, class: "gridline" }, s);
+    el("text", { x: x(v), y: H - 4, "text-anchor": "middle" }, s).textContent = v.toFixed(2);
+  }
+  for (const r of rows) {
+    if (r.g) { el("text", { x: 0, y: r.y, style: "font-weight:600; fill: var(--text-primary)" }, s).textContent = r.g; continue; }
+    el("text", { x: L - 10, y: r.y + 4, "text-anchor": "end" }, s).textContent = r.name;
+    whisker(s, x(r.ci[0]), x(r.ci[1]), r.y, r.c);
+    dot(s, x(r.v), r.y, r.c, r.hollow);
+    el("text", { x: x(r.ci[1]) + 8, y: r.y + 4, class: "val" }, s).textContent = f3(r.v);
+    hover(el("rect", { x: 0, y: r.y - rowH / 2, width: W, height: rowH, class: "hit" }, s),
+      `<b>${r.name}</b><br>macro-F1 ${f3(r.v)} (95% CI ${f3(r.ci[0])}–${f3(r.ci[1])})`);
+  }
+  el("text", { x: L - 10, y: H - 22, "text-anchor": "end" }, s).textContent = "axis starts at 0.75";
+  let group = "";
+  document.getElementById("foresttable").innerHTML = "<tr><th>Run</th><th class='r'>Macro-F1</th><th class='r'>95% CI</th></tr>" +
+    rows.map(r => r.g ? (group = r.g, "") : `<tr><td>${group.split(",")[0]}: ${r.name}</td><td class='r'>${f3(r.v)}</td><td class='r'>${f3(r.ci[0])}–${f3(r.ci[1])}</td></tr>`).join("");
+})();
+
+// 4. Confusion matrix, sequential blue by row share.
 (function () {
   const m = [[292, 21, 22], [1, 305, 18], [13, 31, 273]];
   const labs = ["supports", "doesn't settle", "contradicts"];
   const W = 420, H = 300, L = 104, T = 40, cw = (W - L - 8) / 3, ch = 72;
-  const s = svg(W, H, document.getElementById("cm"));
+  const s = svg(W, H, document.getElementById("cm"), "Confusion matrix of true and predicted answers");
   el("text", { x: L + 1.5 * cw, y: 12, "text-anchor": "middle" }, s).textContent = "Apertus said →";
   labs.forEach((l, j) => { el("text", { x: L + cw * (j + .5), y: T - 8, "text-anchor": "middle" }, s).textContent = l; });
   const steps = ["--seq-0", "--seq-1", "--seq-2", "--seq-3", "--seq-4", "--seq-5"];
+  const stepOf = share => share > .5 ? 5 : share > .2 ? 4 : share > .08 ? 3 : share > .05 ? 2 : share > .02 ? 1 : 0;
   m.forEach((row, i) => {
     const tot = row.reduce((a, b) => a + b, 0);
     el("text", { x: L - 8, y: T + ch * i + ch / 2 + 4, "text-anchor": "end" }, s).textContent = labs[i];
     row.forEach((v, j) => {
-      const share = v / tot;
-      const step = share > .5 ? 5 : share > .08 ? 2 : share > .03 ? 1 : 0;
-      el("rect", { x: L + cw * j + 1, y: T + ch * i + 1, width: cw - 2, height: ch - 2, rx: 4,
-        fill: `var(${steps[step]})` }, s);
+      const share = v / tot, step = stepOf(share);
+      el("rect", { x: L + cw * j + 1, y: T + ch * i + 1, width: cw - 2, height: ch - 2, rx: 4, fill: `var(${steps[step]})` }, s);
       const t = el("text", { x: L + cw * (j + .5), y: T + ch * i + ch / 2 + 5, "text-anchor": "middle", class: "val" }, s);
       t.textContent = v;
-      if (step === 5) t.setAttribute("style", "fill: var(--surface-1)");
-      const hit = el("rect", { x: L + cw * j, y: T + ch * i, width: cw, height: ch, class: "hit" }, s);
-      hover(hit, `true: <b>${labs[i]}</b><br>Apertus: <b>${labs[j]}</b><br>${v} claims (${(share * 100).toFixed(1)}% of row)`);
+      if (step >= 4) t.setAttribute("style", "fill: var(--surface-1)");
+      hover(el("rect", { x: L + cw * j, y: T + ch * i, width: cw, height: ch, class: "hit" }, s),
+        `true: <b>${labs[i]}</b><br>Apertus: <b>${labs[j]}</b><br>${v} claims (${(share * 100).toFixed(1)}% of row)`);
     });
   });
   el("text", { x: 4, y: T + 1.5 * ch, transform: `rotate(-90 12 ${T + 1.5 * ch})`, "text-anchor": "middle" }, s).textContent = "true answer";
+  document.getElementById("cmtable").innerHTML = "<tr><th>True \\ Apertus</th>" + labs.map(l => `<th class='r'>${l}</th>`).join("") + "</tr>" +
+    m.map((row, i) => `<tr><td>${labs[i]}</td>` + row.map(v => `<td class='r'>${v}</td>`).join("") + "</tr>").join("");
 })();
 
-// 4. Macro-F1 by language group: dots, since the axis does not start at zero.
+// 5. Macro-F1 by language group: dot + interval, since the axis does not start at zero.
 (function () {
   const rows = [
-    ["booklet in German", 0.8658, 297], ["booklet in French", 0.898, 363], ["booklet in Italian", 0.9076, 316],
-    ["claim in German", 0.883, 316], ["claim in French", 0.8991, 328], ["claim in Italian", 0.89, 332],
-    ["claim ≠ booklet language", 0.899, 641], ["claim = booklet language", 0.8745, 335],
+    ["booklet in German", 0.8658, 297, 0.825, 0.903], ["booklet in French", 0.898, 363, 0.865, 0.929], ["booklet in Italian", 0.9076, 316, 0.873, 0.938],
+    ["claim in German", 0.883, 316, 0.846, 0.917], ["claim in French", 0.8991, 328, 0.864, 0.929], ["claim in Italian", 0.89, 332, 0.855, 0.922],
+    ["claim ≠ booklet language", 0.899, 641, 0.874, 0.921], ["claim = booklet language", 0.8745, 335, 0.839, 0.909],
   ];
   const W = 420, rowH = 30, L = 170, R = 52, T = 6, H = T + rows.length * rowH + 12 + 22;
   const lo = 0.8, hi = 0.95, x = v => L + (W - L - R) * (v - lo) / (hi - lo);
-  const s = svg(W, H, document.getElementById("lang"));
+  const s = svg(W, H + 12, document.getElementById("lang"), "Macro-F1 by language group with intervals");
   for (const v of [0.8, 0.85, 0.9, 0.95]) {
     el("line", { x1: x(v), x2: x(v), y1: T, y2: H - 20, class: "gridline" }, s);
     el("text", { x: x(v), y: H - 4, "text-anchor": "middle" }, s).textContent = v.toFixed(2);
   }
-  rows.forEach(([name, v, n], i) => {
+  rows.forEach(([name, v, n, a, b], i) => {
     const y = T + i * rowH + (i >= 3 ? 6 : 0) + (i >= 6 ? 6 : 0);
-    el("text", { x: L - 8, y: y + 15, "text-anchor": "end" }, s).textContent = name;
-    el("line", { x1: L, x2: x(v), y1: y + 13, y2: y + 13, stroke: "var(--grid)", "stroke-width": 2 }, s);
-    el("circle", { cx: x(v), cy: y + 13, r: 5, fill: "var(--series-1)", stroke: "var(--surface-1)", "stroke-width": 2 }, s);
-    el("text", { x: x(v) + 10, y: y + 17, class: "val" }, s).textContent = v.toFixed(3);
-    const hit = el("rect", { x: 0, y, width: W, height: rowH, class: "hit" }, s);
-    hover(hit, `<b>${name}</b><br>macro-F1 ${v.toFixed(3)} · ${n} claims`);
+    el("text", { x: L - 8, y: y + 17, "text-anchor": "end" }, s).textContent = name;
+    whisker(s, x(a), x(b), y + 13, "var(--series-1)");
+    dot(s, x(v), y + 13, "var(--series-1)");
+    el("text", { x: x(b) + 6, y: y + 17, class: "val" }, s).textContent = f3(v);
+    hover(el("rect", { x: 0, y, width: W, height: rowH, class: "hit" }, s), `<b>${name}</b><br>macro-F1 ${f3(v)} (95% CI ${f3(a)}–${f3(b)}) · ${n} claims`);
   });
-  s.setAttribute("viewBox", `0 0 ${W} ${H + 12}`);
   el("text", { x: L, y: H + 10 }, s).textContent = "axis starts at 0.80";
-  document.getElementById("langtable").innerHTML = "<tr><th>Group</th><th class='r'>Macro-F1</th><th class='r'>n</th></tr>" +
-    rows.map(([a, v, n]) => `<tr><td>${a}</td><td class='r'>${v.toFixed(3)}</td><td class='r'>${n}</td></tr>`).join("");
+  document.getElementById("langtable").innerHTML = "<tr><th>Group</th><th class='r'>Macro-F1</th><th class='r'>95% CI</th><th class='r'>n</th></tr>" +
+    rows.map(([g, v, n, a, b]) => `<tr><td>${g}</td><td class='r'>${f3(v)}</td><td class='r'>${f3(a)}–${f3(b)}</td><td class='r'>${n}</td></tr>`).join("");
 })();
 </script>
 </body>

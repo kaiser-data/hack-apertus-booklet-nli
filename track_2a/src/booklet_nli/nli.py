@@ -9,6 +9,10 @@ from .booklet import Passage, extract_passages, fetch_pdf
 from .llm import LLM
 from .retrieve import DEFAULT_EMBEDDER, top_k
 
+# Output cap, used for all reported runs. Raising it to 600 did not help: answers that hit it are
+# runaway evidence lists (see technical_report.md §5.1).
+MAX_TOKENS = 300
+
 SYSTEM = """You verify claims against an official Swiss federal voting booklet \
 (Abstimmungsbüchlein / explications du Conseil fédéral / spiegazioni del Consiglio federale).
 
@@ -104,7 +108,7 @@ def verify(llm: LLM, booklet: str, claim: str, mode: str = "rag", k: int = 16,
         {"role": "system", "content": SYSTEM},
         {"role": "user", "content": f"Passages:\n\n{format_passages(context)}\n\nClaim: {claim}"},
     ]
-    out = llm.complete(messages, max_tokens=300, json_schema=SCHEMA)
+    out = llm.complete(messages, max_tokens=MAX_TOKENS, json_schema=SCHEMA)
     label, reason, ids = parse_verdict(out.text)
     by_id = {p.id: p for p in context}
     # Unparseable output abstains as neutral and is counted as a parse failure.

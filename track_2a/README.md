@@ -15,7 +15,7 @@ which passages Apertus gets to read (see [Models](#models)).
 On the held-out test split (976 claims, 14 votes not used during development): **macro-F1 0.891**,
 about 3,400 prompt tokens and a median 4.5 s per claim. Giving Apertus the whole booklet instead
 scores 0.735 on the same 60-claim subsample (vs 0.861 with retrieval) at 9× the tokens; part of
-that gap comes from whole-booklet answers cut off by the 300-token output cap (see report §5.1).
+that gap comes from whole-booklet answers that never finish (a runaway evidence list; report §5.1).
 
 - Visual summary: [`docs/results.html`](docs/results.html) (open locally in a browser)
 - Technical report: [`kaiser-data_Report.pdf`](kaiser-data_Report.pdf), source [`technical_report.md`](technical_report.md)
@@ -71,6 +71,13 @@ make run LIMIT=976            # the whole test split
 make predict BOOKLET=<url> CLAIM="..."
 make batch INPUT=data/claims.jsonl OUTPUT=runs/preds.jsonl
 ```
+
+- `make run` needs a running Apertus endpoint (see below); it only runs the client.
+- The same targets work from the repository root (`make run` forwards to `track_2a/`).
+- Runs write to `runs/<split>-<mode>-k<K>-n<LIMIT>/`. An existing directory is resumed: rows
+  that already have a prediction are skipped, and a directory made with different settings is
+  refused. Pass `RUN=runs/<new name>` for a fresh run.
+- The CLI uses 8 parallel requests by default; the reported runs used 12 (`modal/run_eval.py`).
 
 ## Serving Apertus
 
