@@ -170,8 +170,16 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
   leaving them out, by +0.053 (95% CI −0.056 to +0.168). Comparable accuracy at worst, more reliable, 9× fewer tokens.</p>
   <div class="card">
     <div class="legend"><span style="--c: var(--series-1)">16 retrieved passages (ours)</span><span style="--c: var(--series-2)">whole booklet</span><span class="hollow" style="--c: var(--series-2)">whole booklet, rerun with 600-token cap</span></div>
-    <div class="grid2" id="cmp"></div>
+    <p class="chart-title">Claim by claim: who got it right</p>
+    <p class="chart-sub">Each square is one of the 60 claims. Squares with × are answers that never finished (counted as “doesn't settle”).</p>
+    <div id="units"></div>
+    <div class="grid2" id="cmp" style="margin-top:18px"></div>
     <details><summary>Table view</summary>
+      <table><tr><th>Outcome, 60 claims</th><th class="r">Claims</th><th class="r">of which an answer never finished</th></tr>
+      <tr><td>Both right</td><td class="r">41</td><td class="r">0</td></tr>
+      <tr><td>Only 16 passages right</td><td class="r">11</td><td class="r">5 (whole booklet)</td></tr>
+      <tr><td>Only whole booklet right</td><td class="r">3</td><td class="r">1 (16 passages)</td></tr>
+      <tr><td>Both wrong</td><td class="r">5</td><td class="r">1 (whole booklet)</td></tr></table>
       <table><tr><th>Same 60 test claims</th><th class="r">Macro-F1 (95% CI)</th><th class="r">Prompt tokens</th><th class="r">s/claim (median)</th><th class="r">Answers that never finish</th></tr>
       <tr><td>16 retrieved passages</td><td class="r">0.861 (0.754–0.946)</td><td class="r">3,446</td><td class="r">4.4</td><td class="r">1</td></tr>
       <tr><td>Whole booklet</td><td class="r">0.735 (0.614–0.842)</td><td class="r">31,402</td><td class="r">52.4*</td><td class="r">6</td></tr>
@@ -242,8 +250,18 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
     </div>
   </div>
   <div class="card" style="margin-top:12px">
+    <p class="chart-title">A missed passage is not a lost claim</p>
+    <p class="chart-sub">Test claims the booklet settles (652), by whether the annotated passage reached Apertus. Bar length = number of claims.</p>
+    <div class="legend"><span style="--c: var(--series-1)">judged right</span><span style="--c: var(--seq-2)">judged wrong</span></div>
+    <div id="miss"></div>
+    <details><summary>Table view</summary>
+      <table><tr><th>Annotated passage in context</th><th class="r">Claims</th><th class="r">Right</th><th class="r">Wrong</th></tr>
+      <tr><td>Yes</td><td class="r">582</td><td class="r">521 (89.5%)</td><td class="r">61</td></tr>
+      <tr><td>No</td><td class="r">70</td><td class="r">44 (62.9%)</td><td class="r">26</td></tr></table>
+    </details>
+  </div>
+  <div class="card" style="margin-top:12px">
     <ul class="plain">
-      <li><b>Retrieval misses.</b> For 70 of 652 test claims that the booklet settles (10.7 %), the annotated passage never reaches Apertus. That isn't a hard limit: 44 of those 70 were still judged correctly from other passages.</li>
       <li><b>Multi-vote booklets.</b> One booklet covers several votes; the search sometimes returns passages about the wrong vote (e.g. pension reform for a farming claim).</li>
       <li><b>Prompt tweaks didn't fix contradictions.</b> An extra rule (“if the passages cover the point and differ, it's a contradiction”) lowered dev F1 from 0.890 to 0.864, so it was dropped.</li>
       <li><b>Data changes tested after the test run (dev only, not adopted):</b> better passage cutting raised retrieval recall@16 from 0.911 to 0.926 but not the F1 (0.890 → 0.878, within noise); restricting the search to one vote section lowered recall to 0.823.</li>
@@ -357,6 +375,39 @@ const narrow = id => document.getElementById(id).clientWidth < 600;
   }
 })();
 
+// 1b. Unit chart: one square per claim, grouped by outcome.
+(function () {
+  const groups = [
+    { name: "both right", n: 41, fail: 0, fill: "var(--text-muted)", op: .35 },
+    { name: "only 16 passages right", n: 11, fail: 5, fill: "var(--series-1)", stroke: "var(--series-2)", failNote: "whole booklet never finished" },
+    { name: "only whole booklet right", n: 3, fail: 1, fill: "var(--series-2)", stroke: "var(--series-1)", failNote: "16 passages never finished" },
+    { name: "both wrong", n: 5, fail: 1, fill: "var(--text-secondary)", stroke: "var(--series-2)", failNote: "whole booklet never finished" },
+  ];
+  const host = document.getElementById("units");
+  const W = narrow("units") ? 460 : 860, L = W < 860 ? 150 : 190, size = 14, gap = 3, rowH = 26;
+  const perRow = Math.floor((W - L - 40) / (size + gap));
+  let y = 4;
+  for (const g of groups) g.rows = Math.ceil(g.n / perRow);
+  const H = groups.reduce((a, g) => a + g.rows * (size + gap) + 12, 4);
+  const s = svg(W, H, host, "Outcome of each of the 60 claims");
+  for (const g of groups) {
+    el("text", { x: L - 10, y: y + 11, "text-anchor": "end" }, s).textContent = g.name;
+    for (let i = 0; i < g.n; i++) {
+      const cx = L + (i % perRow) * (size + gap), cy = y + Math.floor(i / perRow) * (size + gap);
+      const failed = i >= g.n - g.fail;
+      el("rect", { x: cx + (failed ? 1 : 0), y: cy + (failed ? 1 : 0), width: size - (failed ? 2 : 0), height: size - (failed ? 2 : 0), rx: 3,
+        fill: failed ? "var(--surface-1)" : g.fill, "fill-opacity": g.op || 1, stroke: failed ? g.fill : "none", "stroke-width": failed ? 2 : 0 }, s);
+      if (failed) el("path", { d: `M${cx + 4},${cy + 4} L${cx + size - 4},${cy + size - 4} M${cx + size - 4},${cy + 4} L${cx + 4},${cy + size - 4}`,
+        stroke: g.fill, "stroke-width": 1.5, "stroke-linecap": "round" }, s);
+    }
+    const end = L + Math.min(g.n, perRow) * (size + gap) + 6;
+    el("text", { x: end, y: y + 11, class: "val" }, s).textContent = g.n + (g.fail ? `  (${g.fail} never finished)` : "");
+    hover(el("rect", { x: 0, y: y - 4, width: W, height: g.rows * (size + gap) + 8, class: "hit" }, s),
+      `<b>${g.name}</b>: ${g.n} claims` + (g.fail ? `<br>${g.fail} marked ×: ${g.failNote}` : ""));
+    y += g.rows * (size + gap) + 12;
+  }
+})();
+
 // 2. Recall@k for two passage cutters, with the two evaluated k values called out.
 (function () {
   const series = [
@@ -433,6 +484,26 @@ const narrow = id => document.getElementById(id).clientWidth < 600;
   let group = "";
   document.getElementById("foresttable").innerHTML = "<tr><th>Run</th><th class='r'>Macro-F1</th><th class='r'>95% CI</th></tr>" +
     rows.map(r => r.g ? (group = r.g, "") : `<tr><td>${group.split(",")[0]}: ${r.name}</td><td class='r'>${f3(r.v)}</td><td class='r'>${f3(r.ci[0])}–${f3(r.ci[1])}</td></tr>`).join("");
+})();
+
+// 3b. Retrieval misses: bar length = claims, split into right / wrong.
+(function () {
+  const rows = [["passage reached Apertus", 521, 61], ["passage missed", 44, 26]];
+  const W = narrow("miss") ? 460 : 860, L = W < 860 ? 150 : 190, R = 150, rowH = 34, T = 4;
+  const H = T + rows.length * rowH;
+  const x = n => (W - L - R) * n / 582;
+  const s = svg(W, H, document.getElementById("miss"), "Claims with and without the annotated passage, judged right or wrong");
+  rows.forEach(([name, ok, bad], i) => {
+    const y = T + i * rowH;
+    el("text", { x: L - 10, y: y + 17, "text-anchor": "end" }, s).textContent = name;
+    el("rect", { x: L, y: y + 4, width: x(ok), height: 20, rx: 0, fill: "var(--series-1)" }, s);
+    hbar(s, L + x(ok) + 2, y + 4, Math.max(4, x(bad) - 2), 20, "var(--seq-2)");
+    el("text", { x: L + x(ok + bad) + 8, y: y + 18, class: "val" }, s).textContent =
+      `${ok} of ${ok + bad} right (${(100 * ok / (ok + bad)).toFixed(0)}%)`;
+    hover(el("rect", { x: 0, y, width: W, height: rowH, class: "hit" }, s),
+      `<b>${name}</b><br>${ok} right, ${bad} wrong (${ok + bad} claims)`);
+  });
+  el("line", { x1: L, x2: L, y1: T, y2: H, class: "axis" }, s);
 })();
 
 // 4. Confusion matrix, sequential blue by row share.
