@@ -27,7 +27,7 @@ build/
 .vscode/
 
 # Local handoff notes
-HANDOFF.md
+HANDOFF*.md
 
 # local knowledge-graph output (graphify)
 graphify-out/

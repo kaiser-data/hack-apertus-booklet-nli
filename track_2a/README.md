@@ -14,7 +14,8 @@ which passages Apertus gets to read (see [Models](#models)).
 
 On the held-out test split (976 claims, 14 votes not used during development): **macro-F1 0.891**,
 about 3,400 prompt tokens and a median 4.5 s per claim. Giving Apertus the whole booklet instead
-scores 0.735 on the same 60-claim subsample (vs 0.861 with retrieval) at 9× the tokens.
+scores 0.735 on the same 60-claim subsample (vs 0.861 with retrieval) at 9× the tokens; part of
+that gap comes from whole-booklet answers cut off by the 300-token output cap (see report §5.1).
 
 - Visual summary: [`docs/results.html`](docs/results.html) (open locally in a browser)
 - Technical report: [`kaiser-data_Report.pdf`](kaiser-data_Report.pdf), source [`technical_report.md`](technical_report.md)
@@ -65,7 +66,7 @@ Options: `--mode rag|full`, `--k 16`, `--embedder <fastembed model>`.
 
 ```bash
 export LLM_NAME=swiss-ai/Apertus-v1.5-8B LLM_BASE_URL=... LLM_API_KEY=...
-make run                      # balanced 60-claim sample of the test split
+make run                      # 60-claim sample of the test split (seed 0)
 make run LIMIT=976            # the whole test split
 make predict BOOKLET=<url> CLAIM="..."
 make batch INPUT=data/claims.jsonl OUTPUT=runs/preds.jsonl

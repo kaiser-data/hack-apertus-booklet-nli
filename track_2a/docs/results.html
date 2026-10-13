@@ -111,7 +111,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
   <div class="card tile"><div class="num">0.891</div><div class="lbl">macro-F1 on held-out test</div>
     <div class="sub">976 claims from 14 vote dates never seen while building it · 95% CI 0.871–0.909</div></div>
   <div class="card tile"><div class="num">9×</div><div class="lbl">fewer tokens than reading the whole booklet</div>
-    <div class="sub">3,400 vs 31,400 prompt tokens per claim, and more accurate</div></div>
+    <div class="sub">3,400 vs 31,400 prompt tokens per claim, at least as accurate</div></div>
   <div class="card tile"><div class="num">4.5 s</div><div class="lbl">median time per claim</div>
     <div class="sub">one L40S GPU, 12 claims in parallel</div></div>
 </div>
@@ -122,7 +122,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
   most related to the claim, across languages, and Apertus judges only those.</p>
   <div class="flow">
     <div class="step"><div class="n">1</div><h3>Split the booklet</h3>
-      <p>The PDF becomes short passages (≤ 900 characters), each tagged with its page and section.</p>
+      <p>The PDF becomes short passages (about 900 characters), each tagged with its page and section.</p>
       <div class="where">CPU · cached</div></div>
     <div class="step"><div class="n">2</div><h3>Find related passages</h3>
       <p>A multilingual embedding model picks the 16 passages closest to the claim. A French claim finds German text directly, with no translation.</p>
@@ -159,15 +159,17 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 </section>
 
 <section>
-  <h2>Reading less beats reading everything</h2>
+  <h2>Reading less is as good as reading everything, at a ninth of the cost</h2>
   <p class="lede">The same 60 test claims, judged two ways: Apertus given the whole booklet (~31k tokens), or only the 16 retrieved passages.
-  The long input doesn't help an 8B model. It gets distracted, slower, and more often fails to produce a valid answer.
-  Retrieval gets 11 of these claims right that the whole booklet misses (the reverse: 3). Paired difference +0.127 F1, 95% CI +0.012 to +0.252.</p>
+  The long input doesn't help an 8B model, and it is much slower and more expensive.
+  Raw macro-F1 favours retrieval by +0.127 (95% CI +0.012 to +0.252), but part of that is our own setup: every “unparseable” answer
+  was cut off at the 300-token output cap we set, and 5 of the 11 claims only retrieval got right are such cut-offs.
+  Leaving out the 6 cut-off claims, the gap is +0.053 (95% CI −0.056 to +0.168): comparable accuracy, 9× fewer tokens.</p>
   <div class="card">
     <div class="legend"><span style="--c: var(--series-1)">16 retrieved passages (ours)</span><span style="--c: var(--series-2)">whole booklet</span></div>
     <div class="grid2" id="cmp"></div>
     <details><summary>Table view</summary>
-      <table><tr><th>Same 60 test claims</th><th class="r">Macro-F1</th><th class="r">Prompt tokens</th><th class="r">s/claim (median)</th><th class="r">Unparseable answers</th></tr>
+      <table><tr><th>Same 60 test claims</th><th class="r">Macro-F1</th><th class="r">Prompt tokens</th><th class="r">s/claim (median)</th><th class="r">Cut off at 300 tokens</th></tr>
       <tr><td>16 retrieved passages</td><td class="r">0.861</td><td class="r">3,446</td><td class="r">4.4</td><td class="r">1</td></tr>
       <tr><td>Whole booklet</td><td class="r">0.735</td><td class="r">31,402</td><td class="r">52.4*</td><td class="r">6</td></tr></table>
       <p>* Inflated: 12 long requests shared one GPU at once. With the same setting on dev it was 15.5 s, still ~3× slower.</p>
@@ -178,22 +180,21 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 <section>
   <h2>How many passages to give it</h2>
   <p class="lede">The line shows how often the right passage is among the top <i>k</i> the search returns (dev split).
-  At 8 passages it is missing a quarter of the time; at 16, about one time in ten. That is why we use 16.
-  The F1 gain from 8 to 16 on dev (+0.041, 95% CI −0.005 to +0.091) is suggestive on its own; the recall gain and the matching test score back it up.</p>
+  At 8 passages it is missing a quarter of the time; at 16, about one time in ten. That, together with the F1 gain from 8 to 16 on dev
+  (+0.041, 95% CI −0.005 to +0.091, suggestive on its own), is why we chose 16, before touching the test split. The test score (0.891) later matched dev (0.890).</p>
   <div class="card">
     <p class="chart-title">Search finds the annotated passage within the top k</p>
     <p class="chart-sub">Retrieval recall@k, dev split, 338 claims with a reference passage. Labels show Apertus's macro-F1 at that k (dev, 150 claims).</p>
     <div id="recall"></div>
     <details><summary>Table view</summary>
       <table><tr><th>k</th><th class="r">Recall@k</th><th class="r">Macro-F1 (dev)</th><th class="r">Prompt tokens</th></tr>
-      <tr><td>1</td><td class="r">0.32</td><td class="r">–</td><td class="r">–</td></tr>
-      <tr><td>3</td><td class="r">0.57</td><td class="r">–</td><td class="r">–</td></tr>
+      <tr><td>1</td><td class="r">0.31</td><td class="r">–</td><td class="r">–</td></tr>
+      <tr><td>3</td><td class="r">0.56</td><td class="r">–</td><td class="r">–</td></tr>
       <tr><td>5</td><td class="r">0.68</td><td class="r">–</td><td class="r">–</td></tr>
       <tr><td>8</td><td class="r">0.77</td><td class="r">0.850</td><td class="r">1,818</td></tr>
       <tr><td>12</td><td class="r">0.85</td><td class="r">–</td><td class="r">–</td></tr>
-      <tr><td>16</td><td class="r">0.92*</td><td class="r">0.890</td><td class="r">3,354</td></tr>
-      <tr><td>20</td><td class="r">0.92</td><td class="r">–</td><td class="r">–</td></tr></table>
-      <p>* At k=16, the share of dev claims whose reference passage was in Apertus's context (measured in the k=16 run).</p>
+      <tr><td>16</td><td class="r">0.91</td><td class="r">0.890</td><td class="r">3,354</td></tr>
+      <tr><td>20</td><td class="r">0.93</td><td class="r">–</td><td class="r">–</td></tr></table>
     </details>
   </div>
 </section>
@@ -219,7 +220,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
   </div>
   <div class="card" style="margin-top:12px">
     <ul class="plain">
-      <li><b>Retrieval is the ceiling.</b> For about 11 % of test claims the right passage never reaches Apertus, so it can't get those right.</li>
+      <li><b>Retrieval misses.</b> For 70 of 652 test claims that the booklet settles (10.7 %), the annotated passage never reaches Apertus. That isn't a hard limit: 44 of those 70 were still judged correctly from other passages.</li>
       <li><b>Multi-vote booklets.</b> One booklet covers several votes; the search sometimes returns passages about the wrong vote (e.g. pension reform for a farming claim).</li>
       <li><b>Prompt tweaks didn't fix contradictions.</b> An extra rule (“if the passages cover the point and differ, it's a contradiction”) lowered dev F1 from 0.890 to 0.864, so it was dropped.</li>
       <li><b>Data changes tested after the test run (dev only, not adopted):</b> better passage cutting raised retrieval recall@16 from 0.911 to 0.926 but not the F1 (0.890 → 0.878, within noise); restricting the search to one vote section lowered recall to 0.823.</li>
@@ -231,7 +232,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 
 <footer>
   Numbers from <code>track_2a/runs/test-rag-k16-n976</code>, <code>test-full-n60</code>, <code>dev-rag-k8-n150</code>,
-  <code>dev-rag-k16-n150</code> and <code>retrieval-dev-paraphrase-multilingual-MiniLM-L12-v2.json</code>.
+  <code>dev-rag-k16-n150</code> and <code>retrieval-dev-parser-v2.json</code>.
   Dataset: OSTswiss/MNLIoverSwissVotingBooklets v1.1 (MIT), split by vote date. Full write-up: <code>kaiser-data_Report.pdf</code>.
 </footer>
 </main>
@@ -272,7 +273,7 @@ const panels = [
   { title: "Macro-F1", sub: "higher is better", vals: [0.861, 0.735], fmt: v => v.toFixed(3), max: 1 },
   { title: "Prompt tokens per claim", sub: "lower is cheaper", vals: [3446, 31402], fmt: v => v.toLocaleString("en-US"), max: 32000 },
   { title: "Seconds per claim (median)", sub: "lower is faster · whole-booklet value inflated by GPU queueing", vals: [4.4, 52.4], fmt: v => v.toFixed(1) + " s", max: 55 },
-  { title: "Unparseable answers (of 60)", sub: "lower is better", vals: [1, 6], fmt: v => String(v), max: 7 },
+  { title: "Answers cut off at our 300-token cap (of 60)", sub: "counted as neutral · lower is better", vals: [1, 6], fmt: v => String(v), max: 7 },
 ];
 const names = ["16 passages", "whole booklet"];
 const colors = ["var(--series-1)", "var(--series-2)"];
@@ -296,7 +297,7 @@ for (const p of panels) {
 
 // 2. Recall@k line with the two evaluated k values called out.
 (function () {
-  const pts = [[1, .3166], [3, .5651], [5, .6805], [8, .7692], [12, .8462], [20, .9201]];
+  const pts = [[1, .3107], [3, .5562], [5, .6775], [8, .7692], [12, .8491], [16, .9112], [20, .929]];
   const f1 = { 8: 0.850, 16: 0.890 };
   const W = 860, H = 260, L = 44, R = 20, T = 16, B = 34;
   const x = k => L + (W - L - R) * (k - 1) / 19;
@@ -320,7 +321,7 @@ for (const p of panels) {
     const hit = el("circle", { cx: x(k), cy: y(v), r: 14, class: "hit" }, s);
     hover(hit, `<b>top ${k}</b><br>right passage found: ${(v * 100).toFixed(1)}%`);
   }
-  el("text", { x: x(20) - 6, y: y(.9201) + 20, "text-anchor": "end", class: "val" }, s).textContent = "92% at k=20";
+  el("text", { x: x(16) + 6, y: y(.9112) + 20, class: "val" }, s).textContent = "91% at k=16";
 })();
 
 // 3. Confusion matrix, sequential blue by row share.

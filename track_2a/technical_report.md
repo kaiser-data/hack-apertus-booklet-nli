@@ -19,22 +19,25 @@ decision.
 On the held-out test split (976 claims, 14 vote dates never used during development), the system
 reaches **macro-F1 0.891** (95% bootstrap interval 0.871–0.909) with about **3,400 prompt tokens** and a median **4.5 s** per claim on
 one L40S GPU. On a 60-claim test subsample, giving Apertus the whole booklet instead of retrieved
-passages scores **macro-F1 0.735 against 0.861** for retrieval on the same claims (paired
-difference +0.127, 95% interval +0.012 to +0.252), while using **9× the prompt tokens** (31,400 vs
-3,450) and producing 6 unparseable answers instead of 1.
-Retrieval makes the 8B model both more accurate and much cheaper.
+passages scores **macro-F1 0.735 against 0.861** for retrieval on the same claims, while using
+**9× the prompt tokens** (31,400 vs 3,450). Part of that gap is an artefact: 6 whole-booklet answers
+(and 1 retrieval answer) were cut off by our 300-token output cap and counted as neutral. Without
+those 6 claims the difference is +0.053 (95% interval −0.056 to +0.168). The honest summary:
+retrieval is at least as accurate as reading the whole booklet, at a ninth of the tokens and about
+a third of the time.
 
 ## 2. Architecture
 
 ```
-booklet PDF ─► passages ≤ 900 chars, with page + outline path      (CPU, cached)
+booklet PDF ─► passages of ~900 chars, with page + outline path    (CPU, cached)
 claim ───────► top-16 passages by cross-lingual embedding           (CPU, cached per booklet)
             ─► Apertus-v1.5-8B: {reason, evidence ids, label}       (GPU, vLLM, JSON schema)
 ```
 
 1. **Passages** (`booklet.py`). PyMuPDF extracts text page by page. Soft hyphens and words broken
-   across lines are repaired. PDF text blocks are merged into passages of at most ~900 characters
-   that never cross a page. Each passage keeps its page number and the PDF outline path of that
+   across lines are repaired. PDF text blocks are merged into passages of about 900 characters
+   that never cross a page (a single long block is kept whole, so 195 of 7,610 dev+test passages
+   are longer; the longest has 1,623 characters). Each passage keeps its page number and the PDF outline path of that
    page (vote › part › subsection), so the model and the user can see where a passage comes from.
    Parsed passages are cached per booklet.
 2. **Retrieval** (`retrieve.py`). Claim and passages are embedded with
@@ -45,7 +48,8 @@ claim ───────► top-16 passages by cross-lingual embedding       
    (including "a statement attributed to the wrong actor is a contradiction"), the numbered
    passages and the claim. Output is constrained by a JSON schema (`reason`, `evidence`, `label`);
    if a server does not support structured output, the client falls back to plain JSON parsing.
-   Unparseable answers count as neutral and are reported as parse failures.
+   Output is capped at 300 tokens; an answer cut off by the cap cannot be parsed. Unparseable
+   answers count as neutral and are reported as parse failures.
 4. **Interfaces** (`cli.py`). `predict` (one claim), `batch` (JSONL), `eval` (resumable; writes
    predictions and metrics), `retrieval` (recall@k without an LLM). `make run` runs `eval` in Docker.
 
@@ -103,8 +107,13 @@ runs use a paired bootstrap on the claims both runs share (`booklet-nli compare`
 | **RAG, k=16 (ours)** | 976 | **0.891** (0.871–0.909) | 0.891 | 0.716 | 3,424 | 4.5 | 2 |
 
 On the 60 shared claims, retrieval gets 11 claims right that the full booklet gets wrong, and the
-reverse happens 3 times. The paired difference is +0.127 (95% CI +0.012 to +0.252): retrieval is
-clearly better, but the size of the gap is not precise at n = 60.
+reverse happens 3 times. The paired difference is +0.127 (95% CI +0.012 to +0.252), but 5 of those
+11 are full-booklet parse failures. Every parse failure in both runs stopped at exactly 300
+completion tokens, our own `max_tokens` cap: the long-context answers ran out of output budget,
+they did not fail to follow the format. Excluding the 6 failed claims, the difference is +0.053
+(95% CI −0.056 to +0.168), not significant. Retrieval is therefore comparable or better in
+accuracy, and clearly cheaper and faster. The 60 claims were drawn with a fixed seed and are not
+exactly balanced (24 entailment, 18 neutral, 18 contradiction).
 
 \* Full-booklet latency is inflated by load: 12 concurrent requests of ~31k tokens share one GPU.
 On dev with the same setting it was 15.5 s median, still about 3× slower than retrieval.
@@ -119,13 +128,17 @@ Confusion matrix, test, RAG k=16 (rows gold, columns predicted):
 
 By language (macro-F1): booklet DE 0.866, FR 0.898, IT 0.908; claim DE 0.883, FR 0.899,
 IT 0.890; cross-lingual pairs 0.899 (n = 641), same-language pairs 0.875 (n = 335). Cross-lingual
-pairs are not harder than same-language ones, which supports skipping translation.
+pairs score no worse than same-language ones (difference +0.024, 95% CI −0.017 to +0.071), so we
+see no evidence that a translation step is needed.
 
-Mean completion length is 86 tokens. The 90th-percentile latency is 6.7 s.
+Mean completion length is 86 tokens. The 90th-percentile latency is 7.1 s over all 976 claims
+(6.7 s over the 940 claims run on Modal, see §6).
 
 ### 5.2 Design decisions (dev split)
 
-All choices were made on dev, on the same 150-claim stratified sample.
+All choices were made on dev, on the same 150-claim stratified sample. **Order of work:** k and
+the prompt were fixed on dev (this section); the test split was then run once (§5.1); the data
+experiments in §5.3 came afterwards and used dev only.
 
 | Variant | Macro-F1 (95% CI) | Context recall | Prompt tokens | s/claim (median) |
 |---|---|---|---|---|
@@ -134,11 +147,13 @@ All choices were made on dev, on the same 150-claim stratified sample.
 | RAG, k=16 + extra "contradiction, not neutral" rule in the prompt | 0.864 (0.80–0.92) | – | 3,404 | 4.7 |
 | Full booklet (n = 30) | 0.582 (0.39–0.74) | 1.00 | 31,785 | 15.5 |
 
-- **Retrieval depth.** Retrieval recall@k of the reference passage on dev (338 non-neutral claims):
-  @1 0.32, @3 0.57, @5 0.68, @8 0.77, @12 0.85, @20 0.92. Going from k=8 to k=16 fixed 9 claims and
-  broke 3, at about 1.8× the tokens. The paired difference is +0.041 (95% CI −0.005 to +0.091), so
-  dev alone does not prove k=16 better; the choice rests on that together with the retrieval
-  recall gain (0.77 → 0.92). The held-out test score (0.891) matches dev (0.890).
+- **Retrieval depth.** Retrieval recall@k of the reference passage on dev (all 338 non-neutral
+  claims): @1 0.31, @3 0.56, @5 0.68, @8 0.77, @12 0.85, @16 0.91, @20 0.93. (The context recall
+  column above is the same quantity measured on the 150-claim sample inside each run.) Going from
+  k=8 to k=16 fixed 9 claims and broke 3, at about 1.8× the tokens. The paired difference is +0.041
+  (95% CI −0.005 to +0.091), so the F1 difference alone does not prove k=16 better; the choice rests
+  on it together with the recall gain from k=8 to k=16 (0.77 → 0.91). The later test score (0.891)
+  is consistent with dev (0.890) but played no part in the choice.
 - **A rejected prompt change.** The most frequent dev error was contradiction predicted as neutral.
   One added sentence telling the model to prefer contradiction when the passages cover the point
   made things worse (fixed 2, broke 6; contradiction → neutral went from 7 to 9; paired difference
@@ -171,31 +186,37 @@ claims as §5.2.
 
 ### 5.4 Error analysis (dev, k=16, 16 errors)
 
-- 4 contradiction → neutral with the right passage in context: the model reads "the passages do not
-  mention X" where the passage states something incompatible with X.
+- 4 contradiction → neutral and 2 entailment → neutral with the right passage in context: the model
+  reads "the passages do not mention X" where the passage states X or something incompatible with it.
 - 5 retrieval misses. Three are the same claim in three languages about a transition period for
   farmers, where retrieval returned passages about the AHV pension reform, another vote in the
   same multi-vote booklet. Two concern a VAT rate change (7.7 → 8.1 %) whose passage was not
   retrieved.
-- The remaining errors are spread over entailment ↔ contradiction and neutral → contradiction.
+- The remaining 5 errors: 3 contradiction → entailment and 2 neutral → contradiction, all with the
+  reference passage in context.
 
 ## 6. Limitations
 
-- **Retrieval is the ceiling.** About 11 % of non-neutral test claims never see their reference
-  passage (context recall 0.89); the model cannot recover those.
+- **Retrieval misses.** 70 of 652 non-neutral test claims (10.7 %; 7.2 % of all claims) never see
+  their annotated reference passage (context recall 0.89). This is not a hard ceiling: 44 of those 70
+  were still judged correctly, from other passages that carry the same information. Missed
+  references still account for 26 of the 106 test errors.
 - **Multi-vote booklets.** One booklet covers several votes; retrieval can return passages of the
   wrong vote. Routing by the outline's top-level section made this worse (§5.3).
 - **Contradiction vs neutral** remains the main confusion (31 test claims), and prompt wording did
   not fix it.
-- **Evidence hit is a proxy.** It measures n-gram overlap with one annotated snippet; a correct
-  but different passage counts as a miss, so 0.72 is a lower bound on citation quality.
+- **Evidence hit is a proxy.** It measures n-gram overlap with one annotated snippet. A correct but
+  different passage counts as a miss, and a cited passage can overlap the snippet without being the
+  one that decides the claim, so 0.72 can be off in either direction. It is not a manual audit of
+  citations.
 - **Latency** is measured client side over the internet against a serverless GPU, with 12
   concurrent requests. A cold start (about 5 minutes) inflates the first requests of a run, which is
   why we report medians; the per-claim seconds in `predictions.jsonl` include it. The first 36 test
   claims were run from a heavily loaded laptop before the run moved to Modal; over the 940 claims
   run on Modal the median is 4.47 s and the mean 8.71 s.
 - **Baselines.** The full-booklet comparison uses a 60-claim test subsample, not all 976 claims, to
-  keep GPU cost low; it is directional, not precise.
+  keep GPU cost low, and is confounded by the 300-token output cap (§5.1); it is directional, not
+  precise.
 - **Single run, few dates.** Each configuration was run once at temperature 0. The bootstrap
   intervals resample claims, but the test set comes from only 14 vote dates, so claims are not fully
   independent; dev decisions rest on 6 dates.
@@ -213,11 +234,14 @@ claims as §5.2.
 - **Commands:**
 
 ```bash
-make run                                   # Docker: balanced 60-claim test sample
+make run                                   # Docker: 60-claim test sample (seed 0)
 make run LIMIT=976                         # full test split
 modal deploy modal/serve_apertus.py        # serve Apertus
 modal run modal/run_eval.py::main --split test --limit 976 --k 16 --name test-rag-k16-n976
 ```
+
+The `config` block in `runs/dev-full-n30/metrics.json` names `multilingual-e5-large` as embedder;
+full-booklet mode does not embed, so that field is unused there.
 
 All run directories (`predictions.jsonl` with label, cited pages, reason, tokens and seconds per
 claim; `metrics.json`) are in `track_2a/runs/`. A visual summary of the results is in
