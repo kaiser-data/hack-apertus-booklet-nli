@@ -13,7 +13,7 @@ which passages Apertus gets to read (see [Models](#models)).
 ## Results
 
 On the held-out test split (976 claims, 14 votes not used during development): **macro-F1 0.891**,
-about 3,400 prompt tokens and a median 4.5 s per claim. Giving Apertus the whole booklet instead
+about 3,400 prompt tokens and a median 4.5 s Apertus response per claim. Giving Apertus the whole booklet instead
 scores 0.735 on the same 60-claim subsample (vs 0.861 with retrieval) at 9× the tokens; part of
 that gap comes from whole-booklet answers that never finish (a runaway evidence list; report §5.1).
 
@@ -42,7 +42,8 @@ be compared directly.
 ## Quick start
 
 ```bash
-cp .env.example .env   # fill in LLM_BASE_URL and LLM_API_KEY, then export them
+cp .env.example .env   # fill in LLM_BASE_URL and LLM_API_KEY
+set -a; source .env; set +a   # the CLI reads the environment, not .env
 uv sync
 uv run booklet-nli predict \
   --booklet https://www.bk.admin.ch/dam/de/sd-web/UxUxfYD5ma0h/2021-06-13_erlaeuterungen_des_bundesrates.pdf \
@@ -67,7 +68,7 @@ Options: `--mode rag|full`, `--k 16`, `--embedder <fastembed model>`.
 ```bash
 export LLM_NAME=swiss-ai/Apertus-v1.5-8B LLM_BASE_URL=... LLM_API_KEY=...
 make run                      # 60-claim sample of the test split (seed 0)
-make run LIMIT=976            # the whole test split
+make run LIMIT=976 RUN=runs/test-fresh   # the whole test split, run fresh
 make predict BOOKLET=<url> CLAIM="..."
 make batch INPUT=data/claims.jsonl OUTPUT=runs/preds.jsonl
 ```
@@ -76,7 +77,8 @@ make batch INPUT=data/claims.jsonl OUTPUT=runs/preds.jsonl
 - The same targets work from the repository root (`make run` forwards to `track_2a/`).
 - Runs write to `runs/<split>-<mode>-k<K>-n<LIMIT>/`. An existing directory is resumed: rows
   that already have a prediction are skipped, and a directory made with different settings is
-  refused. Pass `RUN=runs/<new name>` for a fresh run.
+  refused. Pass `RUN=runs/<new name>` for a fresh run: `make run LIMIT=976` alone resumes the
+  committed `runs/test-rag-k16-n976/`, finds every claim done and only recomputes its metrics.
 - The CLI uses 8 parallel requests by default; the reported runs used 12 (`modal/run_eval.py`).
 
 ## Serving Apertus

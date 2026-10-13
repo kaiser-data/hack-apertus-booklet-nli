@@ -142,9 +142,9 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
   <div class="card tile"><div class="num">0.891</div><div class="lbl">macro-F1 on held-out test</div>
     <div class="sub">right on 870 of 976 claims (89%) from 14 vote dates never seen while building it · 95% CI 0.871–0.909</div></div>
   <div class="card tile"><div class="num">9×</div><div class="lbl">fewer tokens than reading the whole booklet</div>
-    <div class="sub">3,400 vs 31,400 prompt tokens per claim, at least as accurate</div></div>
-  <div class="card tile"><div class="num">4.5 s</div><div class="lbl">median time per claim</div>
-    <div class="sub">one L40S GPU, 12 claims in parallel</div></div>
+    <div class="sub">3,400 vs 31,400 prompt tokens per claim, at least as accurate on a 60-claim sample</div></div>
+  <div class="card tile"><div class="num">4.5 s</div><div class="lbl">median Apertus response per claim</div>
+    <div class="sub">one L40S GPU, 12 claims in parallel; PDF parsing and search not included</div></div>
 </div>
 
 <details class="glossary"><summary>What the numbers on this page mean</summary>
@@ -222,11 +222,11 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 </section>
 
 <section>
-  <h2>Reading less is as good as reading everything, at a ninth of the cost</h2>
+  <h2>Reading less scores at least as well as reading everything, with a ninth of the tokens</h2>
   <p class="lede">The same 60 test claims, judged two ways: Apertus given the whole booklet (~31k tokens), or only the 16 retrieved passages.
   With the whole booklet, 6 of 60 answers never finish: Apertus starts listing passage numbers 150, 151, 152, … and never writes its label.
   Doubling the output budget didn't help (6 failures again). Counting those as “doesn't settle”, retrieval leads by +0.127 (95% CI +0.012 to +0.252);
-  leaving them out, by +0.053 (95% CI −0.056 to +0.168). Comparable accuracy at worst, more reliable, 9× fewer tokens.</p>
+  leaving them out, by +0.053 (95% CI −0.056 to +0.168). Retrieval scores higher on this sample, though without the unfinished answers the difference is within noise; it is more reliable and reads 9× fewer tokens.</p>
   <div class="card">
     <div class="legend"><span style="--c: var(--series-1)">16 retrieved passages (ours)</span><span style="--c: var(--series-2)">whole booklet</span><span class="hollow" style="--c: var(--series-2)">whole booklet, rerun with 600-token cap</span></div>
     <p class="chart-title">Claim by claim: who got it right</p>
@@ -273,8 +273,9 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 
 <section>
   <h2>How sure can we be?</h2>
-  <p class="lede">Every dev score with its 95% interval. Running the chosen setup twice, unchanged, gave 0.890 and 0.864 (shaded):
-  GPU inference is not bit-exact even at temperature 0. Two of the three variants land inside that gap and k=8 just below it,
+  <p class="lede">Every dev score with its 95% interval. Running the chosen setup a second time gave 0.890 and 0.864 (shaded). Only the output cap changed (300 → 600, never reached),
+  yet 5 of 150 answers flipped: 4 with the same prompt length (GPU inference is not bit-exact at temperature 0) and 1 with a different
+  passage set. Across all 150 claims, 42 prompts differed in length because near-tied passages were ranked differently. Two of the three variants land inside that gap and k=8 just below it,
   so none of them is clearly distinguishable from the chosen setup on F1 alone. The test score is a single run on 976 claims, hence its narrower interval.</p>
   <div class="card">
     <p class="chart-title">Macro-F1 with 95% bootstrap interval</p>

@@ -1,4 +1,26 @@
-# Hack Apertus — project template
+# Booklet NLI — checking claims against Swiss voting booklets with Apertus
+
+**Hack Apertus · Track 2A submission.** Give it an official federal voting booklet (German, French
+or Italian) and a claim in any of the three languages. Apertus-v1.5-8B says whether the booklet
+**supports**, **contradicts** or **doesn't settle** the claim, and cites the pages it relied on.
+
+- **Held-out test (976 claims, 14 unseen vote dates): macro-F1 0.891** (95% CI 0.871–0.909),
+  about 3,400 prompt tokens per claim, 9× fewer than reading the whole booklet.
+- **Explore every test answer:** [`track_2a/docs/results.html`](track_2a/docs/results.html) —
+  search and filter all 976 claims, read the booklet passage behind each one, click the confusion matrix.
+- **Write-up:** [`track_2a/kaiser-data_Report.pdf`](track_2a/kaiser-data_Report.pdf)
+  ([markdown source](track_2a/technical_report.md)) · **Code and how to run it:** [`track_2a/README.md`](track_2a/README.md)
+
+```bash
+export LLM_NAME=swiss-ai/Apertus-v1.5-8B LLM_BASE_URL=... LLM_API_KEY=...
+make run        # Docker: 60-claim held-out sample, prints macro-F1 (forwards to track_2a/)
+```
+
+---
+
+*The rest of this file is the Hack Apertus template's description of the repository layout.*
+
+## Hack Apertus template
 
 Template repository for [Hack Apertus](https://hackapertus.ch/) submissions.
 Every project keeps almost the same layout, so organizers and judges find the

@@ -17,7 +17,7 @@ cited passages and a short reason as structured JSON. Apertus is the only model 
 decision.
 
 On the held-out test split (976 claims, 14 vote dates never used during development), the system
-reaches **macro-F1 0.891** (95% bootstrap interval 0.871–0.909) with about **3,400 prompt tokens** and a median **4.5 s** per claim on
+reaches **macro-F1 0.891** (95% bootstrap interval 0.871–0.909) with about **3,400 prompt tokens** and a median **4.5 s** Apertus response per claim (PDF parsing and retrieval excluded) on
 one L40S GPU. On a 60-claim test subsample, giving Apertus the whole booklet instead of retrieved
 passages scores **macro-F1 0.735 against 0.861** for retrieval on the same claims, while using
 **9× the prompt tokens** (31,400 vs 3,450). Six of the whole-booklet answers never finish: the model
@@ -118,8 +118,8 @@ is never written. Raising the cap from 300 to 600 tokens and rerunning the 60 cl
 failures again (5 of them the same claims, now stopping at 600). This is a failure mode of long
 input, not of the budget. It can be scored two ways: counting failures as neutral, as the system
 does, retrieval leads by +0.127 (first run) or +0.091 (95% CI −0.004 to +0.197, rerun); excluding
-the 6 failed claims of the first run, by +0.053 (95% CI −0.056 to +0.168). Retrieval is therefore
-comparable or better in accuracy, answers all of those claims (its one failure in the 60 is a
+the 6 failed claims of the first run, by +0.053 (95% CI −0.056 to +0.168). Retrieval therefore scores
+higher on this sample, though the second interval includes zero, answers all of those claims (its one failure in the 60 is a
 different claim; 2 in 976 overall), and is clearly cheaper and faster. The 60 claims were drawn with a fixed seed and are not
 exactly balanced (24 entailment, 18 neutral, 18 contradiction).
 
@@ -168,11 +168,13 @@ experiments in §5.3 came afterwards and used dev only.
   made things worse (fixed 2, broke 6; contradiction → neutral went from 7 to 9; paired difference
   −0.027, 95% CI −0.066 to +0.011), so it was reverted. The same change flipped 11 of 150 predictions at temperature 0, which also shows how
   large the noise is at n = 150: differences of a few claims on dev are not meaningful.
-- **Rerun noise.** Rerunning the chosen setting unchanged (with a 600-token cap that no answer
-  reached; the longest was 225 tokens) changed 5 of 150 predictions and moved dev macro-F1 from
-  0.890 to 0.864. Four of the five had byte-identical prompts, so the variation comes from the
-  serving stack (batched GPU inference is not bit-exact at temperature 0); the fifth had a slightly
-  different passage order (see §7). The paired bootstrap for this pair is +0.027 (95% CI +0.005 to
+- **Rerun noise.** Rerunning the chosen setting with only the output cap raised to 600 tokens (no
+  answer reached it; the longest was 225 tokens) changed 5 of 150 predictions and moved dev
+  macro-F1 from 0.890 to 0.864. Four of the five had prompts of identical length, so their
+  variation comes from the serving stack (batched GPU inference is not bit-exact at temperature 0);
+  the fifth had a different passage set (4,177 vs 3,744 prompt tokens). Across all 150 claims, 42
+  prompts differed in length between the two runs: near-tied passages were ranked differently
+  (see §7), so part of the rerun gap is retrieval variation, not only GPU nondeterminism. The paired bootstrap for this pair is +0.027 (95% CI +0.005 to
   +0.056): it resamples claims but cannot see run-to-run variation, so its intervals are too narrow
   for comparing two runs. The k=8 vs k=16 difference (+0.041) is only about 1.5 times this rerun gap,
   and the test score 0.891 is a single run; one rerun on dev differed by 0.027.
@@ -256,7 +258,8 @@ claims as §5.2.
 
 ```bash
 make run                                   # Docker: 60-claim test sample (seed 0)
-make run LIMIT=976                         # full test split
+make run LIMIT=976 RUN=runs/test-fresh     # full test split, fresh (without RUN it would resume
+                                           # the committed run and only recompute its metrics)
 modal deploy modal/serve_apertus.py        # serve Apertus
 modal run modal/run_eval.py::main --split test --limit 976 --k 16 --name test-rag-k16-n976
 ```
