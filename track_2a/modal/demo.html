@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Booklet NLI live</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f5f2; --surface-1: #fcfcfb; --surface-2: #f0efeb; --border: #dcdbd6;
+  --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #6f6e69;
+  --series-1: #2a78d6; --good: #1a7f37; --bad: #c4314b; --neutral: #6f6e69; --warn: #9a6700;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface-1: #1a1a19; --surface-2: #242422; --border: #3a3a37;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #9a998f;
+    --series-1: #3987e5; --good: #4cb86a; --bad: #e66767; --neutral: #9a998f; --warn: #d4a72c;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface-1: #1a1a19; --surface-2: #242422; --border: #3a3a37;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #9a998f;
+  --series-1: #3987e5; --good: #4cb86a; --bad: #e66767; --neutral: #9a998f; --warn: #d4a72c;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text-primary);
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
+.lede { color: var(--text-secondary); margin: 0 0 20px; }
+a { color: var(--series-1); }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+label { display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin: 0 0 4px; }
+select, textarea, button { font: inherit; color: var(--text-primary); background: var(--surface-1);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+select, textarea { width: 100%; }
+textarea { min-height: 84px; resize: vertical; }
+.row { display: grid; grid-template-columns: 1fr 180px; gap: 12px; margin-bottom: 12px; }
+@media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
+.votes { font-size: 13px; color: var(--text-muted); margin: 4px 0 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+button.go { background: var(--series-1); border-color: var(--series-1); color: #fff; font-weight: 600; padding: 9px 16px; cursor: pointer; }
+button.go:disabled { opacity: .5; cursor: not-allowed; }
+.examples { margin-top: 14px; font-size: 13px; color: var(--text-secondary); }
+.examples button { font-size: 13px; padding: 4px 9px; margin: 4px 6px 0 0; cursor: pointer; text-align: left; }
+.status { font-size: 13px; color: var(--text-muted); }
+.status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--warn); vertical-align: 1px; }
+.status.ready .dot { background: var(--good); }
+#out { margin-top: 16px; }
+.verdict { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
+.verdict.e { color: var(--good); } .verdict.c { color: var(--bad); } .verdict.n { color: var(--neutral); }
+.reason { margin: 0 0 12px; }
+.ev { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
+.ev .where { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.ev .text { font-size: 14px; color: var(--text-secondary); white-space: pre-line; }
+.usage { font-size: 12px; color: var(--text-muted); margin-top: 12px; }
+.err { color: var(--bad); }
+footer { margin-top: 32px; font-size: 13px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Check a claim against a Swiss voting booklet</h1>
+  <p class="lede">Pick an official booklet (German, French or Italian) and write a claim in any of the three languages.
+  Apertus-v1.5-8B reads the 16 passages closest to the claim and says whether the booklet <b>supports</b> it,
+  <b>contradicts</b> it or <b>doesn't settle</b> it, with the passages it relied on. This is the exact setup that scored
+  macro-F1 0.891 on 976 held-out claims. It judges what the booklet says, not whether the claim is true.</p>
+
+  <div class="card">
+    <div class="row">
+      <div><label for="date">Vote</label><select id="date"></select></div>
+      <div><label for="lang">Booklet language</label>
+        <select id="lang"><option value="de">German</option><option value="fr">French</option><option value="it">Italian</option></select></div>
+    </div>
+    <div class="votes" id="votes"></div>
+    <label for="claim">Claim</label>
+    <textarea id="claim" maxlength="400" placeholder="e.g. Le Conseil fédéral recommande de rejeter l'initiative."></textarea>
+    <div class="actions">
+      <button type="button" class="go" id="go">Check claim</button>
+      <span class="status" id="status" aria-live="polite"><span class="dot"></span>Checking whether Apertus is awake…</span>
+    </div>
+    <div class="examples">Try one:
+      <div id="examples"></div>
+    </div>
+  </div>
+
+  <div id="out" aria-live="polite"></div>
+
+  <footer>
+    Apertus runs on one GPU that switches off when nobody uses it; the first claim after a pause waits for it to start (about 5 minutes).
+    Limited to 30 claims per person per day. Claims you enter are sent to the model and not stored.
+    <a href="https://github.com/kaiser-data/hack-apertus-booklet-nli">Code, report and all 976 recorded test answers</a>.
+  </footer>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const LAB = [["✓ The booklet supports this claim", "e"], ["○ The booklet doesn't settle this claim", "n"], ["✗ The booklet contradicts this claim", "c"]];
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const EXAMPLES = [
+  { date: "2021-06-13", lang: "de", claim: "Le Conseil fédéral recommande de rejeter l'initiative sur l'eau potable.", note: "French claim, German booklet" },
+  { date: "2024-06-09", lang: "de", claim: "Le Conseil fédéral préconise l’acceptation de la loi fédérale visant à garantir un approvisionnement électrique sûr à partir d’énergies renouvelables.", note: "French claim, German booklet" },
+  { date: "2021-06-13", lang: "it", claim: "Laut dem Abstimmungstext empfiehlt die Bundesversammlung Volk und Kantonen, die Initiative anzunehmen.", note: "German claim, Italian booklet" },
+  { date: "2022-02-13", lang: "de", claim: "Wird der Vorschlag angenommen, wäre auch Werbung verboten, die sich vorwiegend an Erwachsene richtet, für Kinder und Jugendliche aber zugänglich ist.", note: "German claim, German booklet" },
+];
+let catalog = {}, ready = false, busy = false;
+
+function current() { const d = catalog[$("date").value]; return d && d[$("lang").value]; }
+function showVotes() {
+  const b = current();
+  $("votes").innerHTML = b ? "On the ballot: " + b.votes.map(esc).join(" · ") + ` · <a href="${esc(b.url)}" target="_blank" rel="noopener">booklet PDF</a>` : "";
+}
+function setStatus() {
+  const s = $("status");
+  s.className = "status" + (ready ? " ready" : "");
+  s.innerHTML = `<span class="dot"></span>` + (ready ? "Apertus is ready." : "Apertus is starting up (about 5 minutes after a pause). You can write your claim meanwhile.");
+  $("go").disabled = busy || !ready;
+}
+async function poll() {
+  try { ready = (await (await fetch("/api/health")).json()).ready; } catch { ready = false; }
+  setStatus();
+  if (!ready) setTimeout(poll, 10000);
+}
+async function check() {
+  const b = current(), claim = $("claim").value.trim();
+  if (!b || !claim) return;
+  busy = true; setStatus();
+  $("out").innerHTML = `<div class="card status">Reading the booklet and asking Apertus…</div>`;
+  try {
+    const r = await fetch("/api/verify", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ booklet: b.url, claim }) });
+    const v = await r.json();
+    if (!r.ok) throw new Error(v.detail || r.statusText);
+    const [title, cls] = LAB[v.label];
+    const ev = v.evidence.map(p => `<div class="ev"><div class="where"><a href="${esc(b.url)}#page=${p.page}" target="_blank" rel="noopener">page ${p.page}</a>${p.section ? " · " + esc(p.section) : ""}</div><div class="text">${esc(p.text)}</div></div>`).join("");
+    $("out").innerHTML = `<div class="card">
+      <p class="verdict ${cls}">${v.parsed ? title : "○ No answer"}</p>
+      <p class="reason">${v.parsed ? esc(v.reason) : "Apertus's answer did not finish, so the system abstains (counted as “doesn't settle”)."}</p>
+      ${ev || (v.parsed ? `<div class="ev status">No passage cited.</div>` : "")}
+      <div class="usage">${v.usage.prompt_tokens.toLocaleString("en-US")} prompt tokens · ${v.usage.context_passages} passages read · ${v.usage.seconds.toFixed(1)} s for Apertus</div>
+    </div>`;
+  } catch (e) {
+    $("out").innerHTML = `<div class="card err">${esc(e.message)}</div>`;
+  } finally { busy = false; setStatus(); }
+}
+
+(async function init() {
+  catalog = await (await fetch("/api/booklets")).json();
+  $("date").innerHTML = Object.entries(catalog).map(([d, langs]) =>
+    `<option value="${d}">${d} · ${esc((langs.en || langs.de || Object.values(langs)[0]).votes[0])}${(langs.de || Object.values(langs)[0]).votes.length > 1 ? " and more" : ""}</option>`).join("");
+  $("examples").innerHTML = EXAMPLES.map((x, i) => `<button type="button" data-i="${i}">“${esc(x.claim.slice(0, 60))}…” <span class="status">(${x.note})</span></button>`).join("");
+  $("examples").addEventListener("click", ev => {
+    const btn = ev.target.closest("button"); if (!btn) return;
+    const x = EXAMPLES[+btn.dataset.i];
+    $("date").value = x.date; $("lang").value = x.lang; $("claim").value = x.claim; showVotes();
+  });
+  for (const id of ["date", "lang"]) $(id).addEventListener("input", showVotes);
+  $("go").addEventListener("click", check);
+  $("claim").addEventListener("keydown", ev => { if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) check(); });
+  showVotes(); poll();
+})();
+</script>
+</body>
+</html>

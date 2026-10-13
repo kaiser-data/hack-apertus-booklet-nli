@@ -94,6 +94,11 @@ Any OpenAI-compatible endpoint works, configured through `LLM_NAME`, `LLM_BASE_U
   make modal-deploy   # prints https://<workspace>--apertus-nli-serve.modal.run
   export LLM_BASE_URL=https://<workspace>--apertus-nli-serve.modal.run/v1
   ```
+- **Live demo.** `modal/demo.py` (+ `demo.html`) is a small CPU web app in front of that server:
+  pick one of the 60 benchmark booklets, type a claim, get the verdict with cited passages. It calls
+  the same `verify()` as the evaluation and keeps the API key server-side, with per-client and daily
+  caps. `modal serve modal/demo.py` for a temporary URL, `modal deploy modal/demo.py` to publish.
+  Warm, a claim takes about 3.5 s; after a pause the GPU needs a few minutes to start.
 - **Local (laptop).** A community 4-bit GGUF of the same model runs in Ollama. From inside Docker,
   use `LLM_BASE_URL=http://host.docker.internal:11434/v1`.
 
