@@ -230,11 +230,12 @@ The organisers run the image on a private set with task A (booklet) and task B (
 passage) cases. We generated the same format for our 150 dev claims (`scripts/make_cases.py`) and
 scored with the starter's `evaluate.py`; the final row ran the Docker image itself on Modal (amd64).
 
-| Run (n = 150 per task) | Task A F1 | Task B F1 | Evidence score (A) | Input tokens / case |
+| Run (n = 150 per task) | Task A F1 | Task B F1 | Evidence (A) | Input tokens A / B |
 |---|---|---|---|---|
-| Without `vote`, passage-level evidence | 0.870 | 0.904 | 0.586 | 2,806 |
-| With `vote` in the prompt, passage-level evidence | 0.871 | 0.924 | 0.616 | 2,834 |
-| **With `vote`, sentence quotes (submitted image)** | **0.857** | **0.944** | **0.758** | 2,817 |
+| Without `vote`, passage-level evidence | 0.870 | 0.904 | 0.586 | 3,354 / 2,258 |
+| With `vote` in the prompt, passage-level evidence | 0.871 | 0.924 | 0.616 | 3,382 / 2,286 |
+| With `vote`, sentence quotes (image) | 0.857 | 0.944 | 0.758 | 3,349 / 2,286 |
+| **Same, after review fixes (submitted image)** | **0.857** | **0.930** | **0.768** | 3,349 / 2,286 |
 
 - **Evidence as sentences.** The scorer counts a citation if the shorter text fuzzily lies inside
   the longer. Whole passages often straddle the gold passage's boundary, and whole pages scored
@@ -244,6 +245,11 @@ scored with the starter's `evaluate.py`; the final row ran the Docker image itse
   rows by two claims of rerun noise (§5.2).
 - **`vote`.** Naming the proposal helped task B by 3 claims and did not hurt task A; within noise, kept
   because the contract provides it for exactly this purpose.
+- **Processing time.** Booklets are parsed and embedded inside the worker threads, so this work
+  overlaps with other cases' Apertus calls; the official clock counts only time with no request in
+  flight. Our approximate measurement of that time for the last run: 0.5 s for 300 cases (6
+  workers), excluding container start. Task B tokens are mostly the reference text itself (median
+  1,275, up to ~8k for the longest references); the system prompt is ~450 tokens.
 - **A cascade, rejected.** k = 8 first, re-asking with k = 16 only when the answer is neutral,
   simulated on the §5.2 runs: macro-F1 0.877 vs 0.890 for k = 16 alone, saving 2 % of tokens.
 
