@@ -14,6 +14,7 @@ dependencies = [
 
 [project.scripts]
 booklet-nli = "booklet_nli.cli:main"
+booklet-nli-cases = "booklet_nli.cases:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]

@@ -10,6 +10,9 @@ shows the booklet passages (with page numbers) the answer rests on.
 Apertus is the only model that makes the decision. A small multilingual embedding model picks
 which passages Apertus gets to read (see [Models](#models)).
 
+A verdict says only what the booklet states, not whether a claim is true or how to vote. It is a
+model prediction, not political advice: check the cited passages.
+
 ## Results
 
 On the held-out test split (976 claims, 14 votes not used during development): **macro-F1 0.891**,
@@ -63,7 +66,33 @@ uv run booklet-nli predict \
 
 Options: `--mode rag|full`, `--k 16`, `--embedder <fastembed model>`.
 
-### With Docker (what judges run)
+### Official evaluation contract (what the organisers run)
+
+The image's entrypoint follows the [Solution API Guide](https://gitlab.com/ifsoftware/hackapertus-starter):
+JSONL in, JSONL out, task A (booklet PDF under `/data`) and task B (reference passage) in one file.
+
+```bash
+docker build --platform linux/amd64 -t booklet-nli .
+docker run --rm --platform linux/amd64 -e BASE_URL -e API_KEY \
+  -v "$PWD/examples:/data:ro" -v "$PWD/output:/output" \
+  booklet-nli --input /data/cases.jsonl --output /output/predictions.jsonl
+make cases CASES=examples OUT=runs/cases-out    # the same, via make
+```
+
+- Reads `BASE_URL` and `API_KEY` (falls back to `LLM_BASE_URL` / `LLM_API_KEY`); model
+  `LLM_NAME`, default `swiss-ai/Apertus-v1.5-8B`. One Apertus call per case.
+- Uses the `vote` name to tell Apertus which proposal of a multi-vote booklet the claim is about.
+- Evidence: up to five verbatim sentences with their 1-based page, first from the passages
+  Apertus cited, then from the rest of its context; task B evidence has `page: null`.
+- `metrics` reports the case's Apertus input and output tokens and its wall-clock milliseconds.
+- linux/amd64, CPU only, no downloads at runtime (the embedder is baked into the image), caches in
+  `/tmp`, `/data` read-only. A failing case is retried, then answered neutral; the run exits 0.
+- `modal run modal/check_image.py` builds this Dockerfile on Modal (amd64) and runs `examples/`
+  once with the network blocked and once against the Apertus server.
+- `scripts/make_cases.py` writes official-format cases for our dev or test split; score them with
+  the starter's `evaluate.py`.
+
+### With Docker (benchmark runs)
 
 ```bash
 export LLM_NAME=swiss-ai/Apertus-v1.5-8B LLM_BASE_URL=... LLM_API_KEY=...

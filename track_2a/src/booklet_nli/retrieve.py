@@ -7,14 +7,14 @@ import numpy as np
 from fastembed import TextEmbedding
 
 from .booklet import Passage
-from .config import CACHE_DIR
+from .config import CACHE_DIR, EMBEDDER_DIR
 
 DEFAULT_EMBEDDER = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
 
 @lru_cache(maxsize=2)
 def _model(name: str) -> TextEmbedding:
-    return TextEmbedding(name, cache_dir=str(CACHE_DIR / "embedders"))
+    return TextEmbedding(name, cache_dir=str(EMBEDDER_DIR))
 
 
 def _prefix(name: str, kind: str) -> str:
@@ -37,6 +37,11 @@ def passage_matrix(passages: list[Passage], embedder: str) -> np.ndarray:
     cache.parent.mkdir(parents=True, exist_ok=True)
     np.save(cache, mat)
     return mat
+
+
+def embed_scores(claim: str, texts: list[str], embedder: str = DEFAULT_EMBEDDER) -> np.ndarray:
+    """Cosine similarity of each text to the claim (texts embedded as passages)."""
+    return _embed(embedder, texts, "passage") @ _embed(embedder, [claim], "query")[0]
 
 
 def rank(claim: str, passages: list[Passage], embedder: str = DEFAULT_EMBEDDER) -> list[Passage]:

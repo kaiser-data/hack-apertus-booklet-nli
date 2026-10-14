@@ -26,6 +26,10 @@ does not fix this, and a second whole-booklet run scored 0.771. The honest summa
 least as accurate as reading the whole booklet, more reliable, at a ninth of the tokens and about a
 third of the time.
 
+The Docker image implements the organisers' evaluation contract. On 150 dev claims per task, scored
+with their `evaluate.py`: **task A (booklet) 0.857, task B (given passage) 0.944**, evidence score
+**0.76** with verbatim sentence quotes, about 2,800 input tokens per case (§5.5).
+
 ## 2. Architecture
 
 ```
@@ -50,11 +54,13 @@ claim ───────► top-16 passages by cross-lingual embedding       
    if a server does not support structured output, the client falls back to plain JSON parsing.
    Output is capped at 300 tokens; an answer cut off by the cap cannot be parsed. Unparseable
    answers count as neutral and are reported as parse failures.
-4. **Interfaces** (`cli.py`). `predict` (one claim), `batch` (JSONL), `eval` (resumable; writes
-   predictions and metrics), `retrieval` (recall@k without an LLM). `make run` runs `eval` in Docker.
+4. **Interfaces.** The Docker entrypoint (`cases.py`) implements the organisers' contract:
+   `--input cases.jsonl --output predictions.jsonl`, task A (booklet) and task B (reference passage)
+   mixed, one answer per id, exit 0 (§5.5). `cli.py` adds `predict`, `batch`, `eval` (resumable) and
+   `retrieval` (recall@k without an LLM); `make run` runs `eval` in Docker.
 
 Everything that touches the GPU sits behind an OpenAI-compatible endpoint, configured by
-`LLM_NAME`, `LLM_BASE_URL` and `LLM_API_KEY`.
+`BASE_URL` and `API_KEY` (or the template's `LLM_BASE_URL` / `LLM_API_KEY`) and `LLM_NAME`.
 
 ## 3. Use of Apertus
 
@@ -86,7 +92,10 @@ it chooses.
   XNLI has no Italian, and both are sentence-pair NLI rather than document-grounded. We did not add
   legal texts (Fedlex) or parliamentary debates as evidence: the task asks whether the *booklet*
   settles a claim, and a statute that entails the claim would turn a correct "neutral" into a wrong
-  "entailment". The dataset's `vote` column and `baseline_score` are never used as model input.
+  "entailment". `baseline_score` is never used. The `vote` name is not used in §5.1–5.4; it is an
+  input of the official contract, and the entrypoint passes it to Apertus (§5.5).
+- **Ethics.** A verdict states only what the booklet says, not whether a claim is true or how to
+  vote; the README and demo present it as a model prediction with its cited passages.
 
 ## 5. Evaluation
 
@@ -214,6 +223,29 @@ claims as §5.2.
 - The remaining 5 errors: 3 contradiction → entailment and 2 neutral → contradiction, all with the
   reference passage in context.
 
+### 5.5 Official evaluation contract (dev, organisers' scorer)
+
+The organisers run the image on a private set with task A (booklet) and task B (given reference
+passage) cases. We generated the same format for our 150 dev claims (`scripts/make_cases.py`) and
+scored with the starter's `evaluate.py`; the final row ran the Docker image itself on Modal (amd64).
+
+| Run (n = 150 per task) | Task A F1 | Task B F1 | Evidence score (A) | Input tokens / case |
+|---|---|---|---|---|
+| Without `vote`, passage-level evidence | 0.870 | 0.904 | 0.586 | 2,806 |
+| With `vote` in the prompt, passage-level evidence | 0.871 | 0.924 | 0.616 | 2,834 |
+| **With `vote`, sentence quotes (submitted image)** | **0.857** | **0.944** | **0.758** | 2,817 |
+
+- **Evidence as sentences.** The scorer counts a citation if the shorter text fuzzily lies inside
+  the longer. Whole passages often straddle the gold passage's boundary, and whole pages scored
+  worse (0.535). Up to five verbatim sentences, the three closest to the claim from the passages
+  Apertus cited, then two from the rest of its context, raise the evidence score from 0.62 to
+  0.76 at no extra Apertus tokens. Labels are unchanged; task A F1 differs between the last two
+  rows by two claims of rerun noise (§5.2).
+- **`vote`.** Naming the proposal helped task B by 3 claims and did not hurt task A; within noise, kept
+  because the contract provides it for exactly this purpose.
+- **A cascade, rejected.** k = 8 first, re-asking with k = 16 only when the answer is neutral,
+  simulated on the §5.2 runs: macro-F1 0.877 vs 0.890 for k = 16 alone, saving 2 % of tokens.
+
 ## 6. Limitations
 
 - **Retrieval misses.** 70 of 652 non-neutral test claims (10.7 %; 7.2 % of all claims) never see
@@ -264,17 +296,13 @@ modal deploy modal/serve_apertus.py        # serve Apertus
 modal run modal/run_eval.py::main --split test --limit 976 --k 16 --name test-rag-k16-n976
 ```
 
-The `config` block in `runs/dev-full-n30/metrics.json` names `multilingual-e5-large` as embedder;
-full-booklet mode does not embed, so that field is unused there.
-
 All run directories (`predictions.jsonl` with label, cited pages, reason, tokens and seconds per
 claim; `metrics.json`) are in `track_2a/runs/`. A visual summary of the results is in
 `track_2a/docs/results.html`.
 
 ## 8. Next steps
 
-- Disambiguate the vote with a learned signal instead of outline routing: e.g. let Apertus pick the
-  vote from the booklet's table of contents in a cheap first call, then retrieve within it.
+- Use the given `vote` name for retrieval too (match it to the booklet outline), not only in the prompt.
 - A cross-encoder re-ranker over the top 30 passages, to raise recall at k ≤ 16 and cut tokens.
 - Two-pass verification for claims predicted neutral: ask Apertus to look for an incompatible
   statement explicitly, only when a passage is close in embedding space.
@@ -282,7 +310,6 @@ claim; `metrics.json`) are in `track_2a/runs/`. A visual summary of the results 
   (e.g. `maxItems: 5`), then measure on dev with repeated runs.
 - Run a larger Apertus model on the same pipeline to see whether the contradiction/neutral confusion is
   a capacity issue.
-- A small web front end: paste a claim, see the verdict with highlighted booklet pages.
 
 ## License
 

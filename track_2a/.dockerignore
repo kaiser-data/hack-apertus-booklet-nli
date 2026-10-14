@@ -1,0 +1,8 @@
+.env
+.env.*
+.venv
+data
+runs
+docs
+graphify-out
+*.pdf

@@ -6,14 +6,19 @@ or Italian) and a claim in any of the three languages. Apertus-v1.5-8B says whet
 
 - **Held-out test (976 claims, 14 unseen vote dates): macro-F1 0.891** (95% CI 0.871–0.909),
   about 3,400 prompt tokens per claim, 9× fewer than reading the whole booklet.
+- **Official evaluation contract:** the Docker image takes `--input /data/cases.jsonl --output
+  /output/predictions.jsonl` (tasks A and B, `BASE_URL`/`API_KEY`, amd64, CPU, offline). On 150 dev
+  claims per task with the organisers' `evaluate.py`: task A 0.857, task B 0.944, evidence score 0.76.
+  How to run it: [`track_2a/README.md`](track_2a/README.md#official-evaluation-contract-what-the-organisers-run).
 - **Explore every test answer:** [`track_2a/docs/results.html`](track_2a/docs/results.html) —
   search and filter all 976 claims, read the booklet passage behind each one, click the confusion matrix.
 - **Write-up:** [`track_2a/kaiser-data_Report.pdf`](track_2a/kaiser-data_Report.pdf)
   ([markdown source](track_2a/technical_report.md)) · **Code and how to run it:** [`track_2a/README.md`](track_2a/README.md)
 
 ```bash
-export LLM_NAME=swiss-ai/Apertus-v1.5-8B LLM_BASE_URL=... LLM_API_KEY=...
-make run        # Docker: 60-claim held-out sample, prints macro-F1 (forwards to track_2a/)
+export BASE_URL=https://api.inference.cscs.ch/v1 API_KEY=...
+make cases      # Docker: the evaluation contract on track_2a/examples/ (forwards to track_2a/)
+make run        # Docker: 60-claim held-out sample of our test split, prints macro-F1
 ```
 
 ---

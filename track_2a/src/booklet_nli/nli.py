@@ -74,8 +74,11 @@ class Verdict:
 
 
 def format_passages(passages: list[Passage]) -> str:
-    return "\n\n".join(f"[{p.id}] (p. {p.page}{', ' + p.section if p.section else ''})\n{p.text}"
-                       for p in passages)
+    def where(p: Passage) -> str:  # page 0: a reference text given without a page
+        parts = ([f"p. {p.page}"] if p.page else []) + ([p.section] if p.section else [])
+        return f" ({', '.join(parts)})" if parts else ""
+
+    return "\n\n".join(f"[{p.id}]{where(p)}\n{p.text}" for p in passages)
 
 
 def parse_verdict(text: str) -> tuple[int | None, str, list[int]]:
@@ -101,12 +104,18 @@ def select_context(claim: str, passages: list[Passage], mode: str, k: int,
 
 
 def verify(llm: LLM, booklet: str, claim: str, mode: str = "rag", k: int = 16,
-           embedder: str = DEFAULT_EMBEDDER) -> Verdict:
+           embedder: str = DEFAULT_EMBEDDER, vote: str | None = None) -> Verdict:
     passages = extract_passages(fetch_pdf(booklet))
-    context = select_context(claim, passages, mode, k, embedder)
+    return judge(llm, select_context(claim, passages, mode, k, embedder), claim, vote)
+
+
+def judge(llm: LLM, context: list[Passage], claim: str, vote: str | None = None) -> Verdict:
+    """One Apertus call: the claim against the given passages. `vote` names the proposal."""
+    about = f"Vote: {vote}\n" if vote else ""
     messages = [
         {"role": "system", "content": SYSTEM},
-        {"role": "user", "content": f"Passages:\n\n{format_passages(context)}\n\nClaim: {claim}"},
+        {"role": "user",
+         "content": f"Passages:\n\n{format_passages(context)}\n\n{about}Claim: {claim}"},
     ]
     out = llm.complete(messages, max_tokens=MAX_TOKENS, json_schema=SCHEMA)
     label, reason, ids = parse_verdict(out.text)

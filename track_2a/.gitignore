@@ -45,3 +45,4 @@ runs/*
 !runs/dev-rag-k16-n150-max600/
 !runs/test-full-n60-max600/
 runs/**/*.log
+!runs/contract-dev-n150/
