@@ -74,6 +74,10 @@ Options: `--mode rag|full`, `--k 16`, `--embedder <fastembed model>`.
 The image's entrypoint follows the [Solution API Guide](https://gitlab.com/ifsoftware/hackapertus-starter):
 JSONL in, JSONL out, task A (booklet PDF under `/data`) and task B (reference passage) in one file.
 
+Published image: `ghcr.io/kaiser-data/hack-apertus-booklet-nli:latest` (public, linux/amd64; also
+tagged with the commit). `.github/workflows/image.yml` builds it on every push to `main` and first
+runs `examples/` in it with the network off.
+
 ```bash
 docker build --platform linux/amd64 -t booklet-nli .
 docker run --rm --platform linux/amd64 -e BASE_URL -e API_KEY \

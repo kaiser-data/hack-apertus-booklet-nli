@@ -35,9 +35,10 @@ def _run(files: dict[str, bytes], env: dict[str, str]) -> tuple[str, str]:
 
 @app.function(secrets=[modal.Secret.from_name("apertus-nli-api-key")], cpu=4, memory=4096,
               timeout=3600)
-def online(files: dict[str, bytes], base_url: str) -> tuple[str, str]:
+def online(files: dict[str, bytes], base_url: str, model: str) -> tuple[str, str]:
     import os
     return _run(files, {"BASE_URL": base_url, "API_KEY": os.environ["LLM_API_KEY"],
+                        "LLM_NAME": model,
                         "BOOKLET_NLI_DATA": "/tmp/booklet-nli", "BOOKLET_NLI_EMBEDDERS": "/app/models",
                         "HF_HUB_OFFLINE": "1"})
 
@@ -52,20 +53,21 @@ def offline(files: dict[str, bytes]) -> tuple[str, str]:
 @app.local_entrypoint()
 def main(cases: str = str(ROOT / "examples"),
          base_url: str = "https://kaiser-data--apertus-nli-serve.modal.run/v1",
-         skip_offline: bool = False):
+         skip_offline: bool = False, model: str = "swiss-ai/Apertus-v1.5-8B",
+         out: str = "image-check-predictions.jsonl"):
     root = Path(cases)
     names = ["cases.jsonl"] + [f"booklets/{p.name}" for p in (root / "booklets").glob("*.pdf")]
     files = {n: (root / n).read_bytes() for n in names}
     n_cases = len(files["cases.jsonl"].decode().splitlines())
-    runs = [("online", lambda: online.remote(files, base_url))]
+    runs = [("online", lambda: online.remote(files, base_url, model))]
     if not skip_offline:
         runs.insert(0, ("offline", lambda: offline.remote(files)))
     for name, call in runs:
-        out, err = call()
-        preds = [json.loads(line) for line in out.splitlines()]
+        result, err = call()
+        preds = [json.loads(line) for line in result.splitlines()]
         print(f"== {name}: {len(preds)}/{n_cases} predictions")
         print("\n".join(line for line in err.splitlines() if "attempt" not in line)[-1500:])
         for p in preds[:4]:
             print(" ", p["id"], p["label_name"], [e["page"] for e in p["evidence"]], p["metrics"])
         if name == "online":
-            (ROOT / "runs" / "image-check-predictions.jsonl").write_text(out)
+            (ROOT / "runs" / out).write_text(result)

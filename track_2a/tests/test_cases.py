@@ -70,3 +70,21 @@ def test_quotes_are_sentences_from_cited_passages_first(monkeypatch):
     q = cases.quotes("claim", [cited], [cited, other], "e")
     assert [i["page"] for i in q] == [4, 4, 9]
     assert q[0]["text"].startswith("Das Parlament hat")
+
+
+def test_input_with_a_line_separator_inside_a_string_is_one_case(tmp_path, monkeypatch):
+    monkeypatch.setattr(cases, "LLM", lambda cfg, timeout: StubLLM(
+        '{"reason": "r", "evidence": [], "label": "neutral"}'))
+    inp, out = tmp_path / "cases.jsonl", tmp_path / "predictions.jsonl"
+    inp.write_text(json.dumps(_case(reference={"text": "a b", "language": "de"}),
+                              ensure_ascii=False) + "\n")
+    cases.main(["--input", str(inp), "--output", str(out)])
+    assert [json.loads(line)["id"] for line in out.read_text().splitlines()] == ["c1"]
+
+
+def test_quotes_do_not_repeat_when_a_passage_is_cited_twice(monkeypatch):
+    p = Passage(0, 4, "", "Der Bundesrat empfiehlt ein Nein zur Vorlage. Das Parlament hat "
+                          "die Vorlage im Juni mit grosser Mehrheit angenommen.")
+    monkeypatch.setattr(cases, "embed_scores", lambda claim, texts, emb: [1.0] * len(texts))
+    q = cases.quotes("claim", [p, p], [p], "e")
+    assert len(q) == len({i["text"] for i in q}) == 2

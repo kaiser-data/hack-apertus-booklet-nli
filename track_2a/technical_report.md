@@ -5,6 +5,7 @@
 - **Event:** Online
 - **Team:** kaiser-data (Martin Kaiser)
 - **Code:** https://github.com/kaiser-data/hack-apertus-booklet-nli (`track_2a/`)
+- **Image:** `ghcr.io/kaiser-data/hack-apertus-booklet-nli:latest` (linux/amd64, CPU)
 - **Visual summary:** `track_2a/docs/results.html`
 
 ## 1. Summary

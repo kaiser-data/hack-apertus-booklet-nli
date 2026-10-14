@@ -1,6 +1,7 @@
 """Cross-lingual passage retrieval with a small multilingual embedding model (CPU, ONNX)."""
 
 import hashlib
+import threading
 from functools import lru_cache
 
 import numpy as np
@@ -12,9 +13,17 @@ from .config import CACHE_DIR, EMBEDDER_DIR
 DEFAULT_EMBEDDER = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
 
+_MODEL_LOCK = threading.Lock()
+
+
 @lru_cache(maxsize=2)
-def _model(name: str) -> TextEmbedding:
+def _load(name: str) -> TextEmbedding:
     return TextEmbedding(name, cache_dir=str(EMBEDDER_DIR))
+
+
+def _model(name: str) -> TextEmbedding:
+    with _MODEL_LOCK:  # lru_cache alone lets concurrent first calls load several copies
+        return _load(name)
 
 
 def _prefix(name: str, kind: str) -> str:

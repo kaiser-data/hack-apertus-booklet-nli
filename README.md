@@ -6,6 +6,11 @@ or Italian) and a claim in any of the three languages. Apertus-v1.5-8B says whet
 
 - **Held-out test (976 claims, 14 unseen vote dates): macro-F1 0.891** (95% CI 0.871–0.909),
   about 3,400 prompt tokens per claim, 9× fewer than reading the whole booklet.
+- **Container image (amd64, public):** `ghcr.io/kaiser-data/hack-apertus-booklet-nli:latest`, built
+  from `track_2a/Dockerfile` by [CI](.github/workflows/image.yml), which also runs the contract
+  offline before every push. `docker run --platform linux/amd64 -e BASE_URL -e API_KEY -v
+  <cases>:/data:ro -v <out>:/output ghcr.io/kaiser-data/hack-apertus-booklet-nli:latest --input
+  /data/cases.jsonl --output /output/predictions.jsonl`
 - **Official evaluation contract:** the Docker image takes `--input /data/cases.jsonl --output
   /output/predictions.jsonl` (tasks A and B, `BASE_URL`/`API_KEY`, amd64, CPU, offline). On 150 dev
   claims per task with the organisers' `evaluate.py`: task A 0.857, task B 0.944, evidence score 0.76.

@@ -37,6 +37,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Parse and embed the example booklet offline (fails fast)
+        run: |
+          docker run --rm --network none --read-only --tmpfs /tmp \
+            -v "$PWD/track_2a/examples:/data:ro" --entrypoint /app/.venv/bin/python booklet-nli:ci \
+            -c "from pathlib import Path; from booklet_nli.booklet import extract_passages; \
+          from booklet_nli.retrieve import rank; \
+          ps = extract_passages(Path('/data/booklets/2024_09_22_de.pdf')); \
+          top = rank('Biodiversitätsinitiative Bundesbeschluss', ps)[0]; \
+          assert len(ps) > 50 and top.page > 0, (len(ps), top); print(len(ps), 'passages, top page', top.page)"
+
       - name: Contract check, network off
         run: |
           mkdir -p out && chmod 777 out
