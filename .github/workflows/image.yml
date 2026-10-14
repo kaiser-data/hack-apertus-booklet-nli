@@ -1,0 +1,61 @@
+# Builds the submission image (linux/amd64) and publishes it to GitHub Container Registry:
+#   ghcr.io/kaiser-data/hack-apertus-booklet-nli:latest
+# Before pushing, it runs the evaluation contract on track_2a/examples with the network off:
+# every case must get a line and the run must exit 0 without downloading anything.
+name: image
+
+on:
+  push:
+    branches: [main]
+    paths: ["track_2a/**", ".github/workflows/image.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build (linux/amd64)
+        uses: docker/build-push-action@v6
+        with:
+          context: track_2a
+          platforms: linux/amd64
+          load: true
+          tags: booklet-nli:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Contract check, network off
+        run: |
+          mkdir -p out && chmod 777 out
+          docker run --rm --network none --read-only --tmpfs /tmp \
+            -e BASE_URL=http://127.0.0.1:9/v1 -e API_KEY=none \
+            -v "$PWD/track_2a/examples:/data:ro" -v "$PWD/out:/output" \
+            booklet-nli:ci --input /data/cases.jsonl --output /output/predictions.jsonl
+          cat out/predictions.jsonl
+          test "$(wc -l < out/predictions.jsonl)" -eq "$(wc -l < track_2a/examples/cases.jsonl)"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push
+        run: |
+          docker tag booklet-nli:ci "$IMAGE:latest"
+          docker tag booklet-nli:ci "$IMAGE:${GITHUB_SHA::7}"
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:${GITHUB_SHA::7}"
