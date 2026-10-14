@@ -126,7 +126,9 @@ def web():
             raise HTTPException(400, "Unknown booklet.")
         if not 8 <= len(claim) <= MAX_CLAIM:
             raise HTTPException(400, f"The claim must be 8 to {MAX_CLAIM} characters long.")
-        ip = (request.headers.get("x-forwarded-for") or request.client.host).split(",")[0].strip()
+        # The Cloudflare Pages front end forwards the visitor's address as x-demo-client.
+        ip = (request.headers.get("x-demo-client") or request.headers.get("x-forwarded-for")
+              or request.client.host).split(",")[0].strip()
         spend(ip)
         v = verify(llm, ask.booklet, claim)
         return {**v.to_dict(), "parsed": v.parsed}

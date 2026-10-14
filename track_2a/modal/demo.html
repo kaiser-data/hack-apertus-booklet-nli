@@ -93,7 +93,8 @@ footer { margin-top: 32px; font-size: 13px; color: var(--text-muted); }
     A verdict says only what the booklet states, not whether a claim is true or how to vote. It is a model prediction, not political advice: read the cited passages.
     Apertus runs on one GPU that switches off when nobody uses it; the first claim after a pause waits for it to start (about 5 minutes).
     Limited to 30 claims per person per day. Claims you enter are sent to the model and not stored.
-    <a href="https://github.com/kaiser-data/hack-apertus-booklet-nli">Code, report and all 976 recorded test answers</a>.
+    <a href="https://booklet-nli.pages.dev/">All 976 recorded test answers</a> ·
+    <a href="https://github.com/kaiser-data/hack-apertus-booklet-nli">code and report</a>.
   </footer>
 </main>
 <script>
@@ -132,7 +133,7 @@ async function check() {
   try {
     const r = await fetch("/api/verify", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ booklet: b.url, claim }) });
-    const v = await r.json();
+    const v = await r.json().catch(() => ({ detail: "Apertus took too long to answer (it may have just been restarting). Please try again in a minute." }));
     if (!r.ok) throw new Error(v.detail || r.statusText);
     const [title, cls] = LAB[v.label];
     const ev = v.evidence.map(p => `<div class="ev"><div class="where"><a href="${esc(b.url)}#page=${p.page}" target="_blank" rel="noopener">page ${p.page}</a>${p.section ? " · " + esc(p.section) : ""}</div><div class="text">${esc(p.text)}</div></div>`).join("");

@@ -10,6 +10,9 @@ or Italian) and a claim in any of the three languages. Apertus-v1.5-8B says whet
   /output/predictions.jsonl` (tasks A and B, `BASE_URL`/`API_KEY`, amd64, CPU, offline). On 150 dev
   claims per task with the organisers' `evaluate.py`: task A 0.857, task B 0.944, evidence score 0.76.
   How to run it: [`track_2a/README.md`](track_2a/README.md#official-evaluation-contract-what-the-organisers-run).
+- **Live:** [booklet-nli.pages.dev](https://booklet-nli.pages.dev/) (every test answer) ·
+  [try a claim](https://booklet-nli.pages.dev/demo/) (Apertus on a GPU that sleeps when idle; the
+  first claim after a pause waits about 5 minutes for it to start).
 - **Explore every test answer:** [`track_2a/docs/results.html`](track_2a/docs/results.html) —
   search and filter all 976 claims, read the booklet passage behind each one, click the confusion matrix.
 - **Write-up:** [`track_2a/kaiser-data_Report.pdf`](track_2a/kaiser-data_Report.pdf)

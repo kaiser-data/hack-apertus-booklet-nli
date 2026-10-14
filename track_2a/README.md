@@ -20,7 +20,10 @@ about 3,400 prompt tokens and a median 4.5 s Apertus response per claim. Giving 
 scores 0.735 on the same 60-claim subsample (vs 0.861 with retrieval) at 9× the tokens; part of
 that gap comes from whole-booklet answers that never finish (a runaway evidence list; report §5.1).
 
-- Visual summary: [`docs/results.html`](docs/results.html) (open locally in a browser)
+- Live: [booklet-nli.pages.dev](https://booklet-nli.pages.dev/) (results explorer) and
+  [booklet-nli.pages.dev/demo/](https://booklet-nli.pages.dev/demo/) (type a claim). Cloudflare Pages
+  serves both; `cloudflare/functions/api/` proxies the demo's API to `modal/demo.py`.
+- Visual summary: [`docs/results.html`](docs/results.html) (also open locally in a browser)
 - Technical report: [`kaiser-data_Report.pdf`](kaiser-data_Report.pdf), source [`technical_report.md`](technical_report.md)
 - Raw predictions and metrics behind every number: [`runs/`](runs/)
 
