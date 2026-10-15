@@ -4,11 +4,15 @@ import re
 import time
 from dataclasses import dataclass
 
-from openai import BadRequestError, NotFoundError, OpenAI
+from openai import BadRequestError, NotFoundError, OpenAI, PermissionDeniedError
 
 from .config import LLMConfig
 
 _UNSUPPORTED = re.compile(r"response_format|json_schema|guided|structured", re.IGNORECASE)
+# A proxy may reject a model it does not serve with 400 or 403 instead of 404.
+_UNKNOWN_MODEL = re.compile(
+    r"model\b.{0,80}\b(does not exist|not found|unknown|invalid|not available|not supported|"
+    r"no such|not allowed|not permitted)|\b(unknown|invalid|unsupported) model", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -80,7 +84,9 @@ class LLM:
         while True:
             try:
                 return self.client.chat.completions.create(**{**kwargs, "model": self.model})
-            except NotFoundError:
-                if not self._fallbacks:
+            except (NotFoundError, PermissionDeniedError, BadRequestError) as exc:
+                rejected = not isinstance(exc, BadRequestError) or (
+                    _UNKNOWN_MODEL.search(str(exc)) and not _UNSUPPORTED.search(str(exc)))
+                if not (rejected and self._fallbacks):
                     raise
                 self.model = self._fallbacks.pop(0)  # the server does not serve this model

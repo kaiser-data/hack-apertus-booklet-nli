@@ -117,3 +117,45 @@ def test_pick_prefers_the_70b_when_served_and_falls_back_on_404():
     llm.client.chat.completions.create = create
     assert llm._create({"model": "ignored"}) == "ok" and calls == ["a/70B", "a/8B"]
     assert llm.model == "a/8B"
+
+
+def test_a_400_naming_the_model_also_falls_back():
+    import httpx
+    from openai import BadRequestError
+
+    from booklet_nli.config import LLMConfig
+    from booklet_nli.llm import LLM
+
+    llm = LLM(LLMConfig("x", "http://127.0.0.1:9/v1", "k"))
+    llm.served_models = list
+    llm.pick(["a/70B", "a/8B"])
+
+    def create(**kw):
+        if kw["model"] == "a/70B":
+            raise BadRequestError("The model `a/70B` does not exist.", response=httpx.Response(
+                400, request=httpx.Request("POST", "http://x")), body=None)
+        return "ok"
+    llm.client.chat.completions.create = create
+    assert llm._create({}) == "ok" and llm.model == "a/8B"
+
+
+def test_a_context_length_400_does_not_switch_the_model():
+    import httpx
+    import pytest
+    from openai import BadRequestError
+
+    from booklet_nli.config import LLMConfig
+    from booklet_nli.llm import LLM
+
+    llm = LLM(LLMConfig("x", "http://127.0.0.1:9/v1", "k"))
+    llm.served_models = list
+    llm.pick(["a/70B", "a/8B"])
+
+    def create(**kw):
+        raise BadRequestError("This model's maximum context length is 32768 tokens.",
+                              response=httpx.Response(400, request=httpx.Request("POST", "http://x")),
+                              body=None)
+    llm.client.chat.completions.create = create
+    with pytest.raises(BadRequestError):
+        llm._create({})
+    assert llm.model == "a/70B"
