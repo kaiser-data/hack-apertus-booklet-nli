@@ -40,9 +40,10 @@ in any of the three languages, and quotes booklet sentences with their pages. A 
 selects 16 passages and ranks quotations; Apertus\,v1.5 is the only model that decides and cites. On 976 held-out test
 claims, Apertus-v1.5-8B reaches macro-F1 \textbf{0.891} (95\% CI 0.871--0.909) with $\sim$3{,}400
 prompt tokens per claim; on a paired 60-claim subsample it scores 0.861 against 0.735 for reading the
-whole booklet at 31{,}400 tokens. Under the organisers' scorer on 150 dev claims per task, the same pipeline with
-Apertus-v1.5-70B reaches \textbf{0.905--0.925} with booklets and \textbf{0.979--0.986} with given
-passages (two development runs). The repository includes a demo, hosted
+whole booklet at 31{,}400 tokens. With the organisers' scorer, the same pipeline with
+Apertus-v1.5-70B reaches \textbf{0.930} with booklets and \textbf{0.970} with given passages on the
+held-out test claims (vote-date-clustered 95\% CI 0.909--0.950 and 0.952--0.983), at the same input
+tokens. The repository includes a demo, hosted
 publicly during the hackathon, and an explorer of all 976 test answers. Of three evidence configurations, sentence quotes match the
 annotated passages best (0.758, against 0.535 for whole pages).
 \end{abstract}
@@ -164,13 +165,13 @@ Split & Model & Task A F1 & Task B F1 & Evid.\ (A) & In tokens A / B & Out A \\
 \midrule
 Test, 976 (own scorer) & 8B & 0.891 {\scriptsize(0.869--0.913)$^\ddagger$} & -- & 0.716$^\dagger$ & 3{,}424 / -- & 86 \\
 Dev, 150/task (official) & 8B & 0.857 & 0.930 & 0.768 & 3{,}349 / 2{,}286 & 86 \\
-Dev, 150/task (official) & 70B, run 1 & \textbf{0.925} & 0.979 & \textbf{0.808} & 3{,}349 / 2{,}286 & 92 \\
-Dev, 150/task (official) & 70B, run 2 & 0.905 & \textbf{0.986} & \textbf{0.808} & 3{,}349 / 2{,}286 & 92 \\
+Dev, 150/task (official) & 70B, mean of 4 runs & 0.918 & 0.977 & 0.816 & 3{,}349 / 2{,}286 & 92 \\
+\textbf{Test, 976/task (official)} & \textbf{70B} & \textbf{0.930} {\scriptsize(0.909--0.950)$^\ddagger$} & \textbf{0.970} & \textbf{0.844} & 3{,}446 / 2{,}013 & 94 \\
 \bottomrule
 \end{tabular}
 \caption{\textbf{Main results.} ``Official'': the organisers' scorer on cases in their format, run in
 our Docker image. $^\dagger$Test evidence uses our own n-gram overlap measure. $^\ddagger$Bootstrap over the 14 vote
-dates (claim-level: 0.871--0.909). A near-repeat of the 8B dev run (larger output cap) moved F1 by 0.027. Files: \texttt{runs/test-rag-k16-n976/}, \texttt{runs/contract-dev-n150/}.}
+dates (8B claim-level: 0.871--0.909). A near-repeat of the 8B dev run (larger output cap) moved F1 by 0.027. Files: \texttt{runs/test-rag-k16-n976/}, \texttt{runs/contract-dev-n150/}.}
 \label{tab:main}
 \end{table}
 
@@ -183,7 +184,8 @@ the booklet names a specific body in another language (``comitati referendari'',
 \emph{neutral}. Reading these cases suggests that mapping actors across languages, rather than
 translation as such, is the open problem. A prompt glossary of actor names across the three languages did
 not fix it (actor claims 82/90 before and after with the 8B; 70B task B 0.958 against 0.979--0.986, at
-+137 tokens), so it is not used.
++137 tokens), and neither did asking Apertus to name the actors before the label (70B dev task A 0.865
+against 0.918), so neither is used.
 
 \begin{figure}[h]
 \centering
@@ -235,8 +237,8 @@ annotated passage in the top 16 (338 dev claims) against CPU seconds per booklet
 controlled: the sentence configuration comes from a separate inference run (two task-A labels differ)
 and also adds sentences from uncited context.
 \textbf{Model size.} With identical prompts, retrieval and input tokens (output 92 against 86), the 70B
-gains 5--7 points on the booklet task and 5--6 on given passages, in two dev runs; held-out
-confirmation remains (Table~\ref{tab:main}).
+gains 6 points on the booklet task on dev (mean 0.918 over four runs, range 0.905--0.932) and holds on
+the held-out test split: 0.930 against 0.891 for the 8B, with evidence Hit@5 0.844 (Table~\ref{tab:main}).
 \textbf{Embedder cost.} Larger embedders retrieve better (recall@16 0.965 and 0.970 against 0.911) but
 need 83 and 192\,s of CPU per booklet against 3\,s; BM25 fusion did not help at $k=16$
 (Fig.~\ref{fig:evid}b). In a task-A-only container the submitted image spends 0.22\,s of non-LLM time
@@ -254,8 +256,7 @@ service would differ: users wait for each answer and every 70B query costs GPU t
 a median 4.5\,s at 0.891 on test), while booklets could be embedded once ahead of time, which removes
 most of the cost of stronger embedders. Retrieving instead of reading everything holds in both settings;
 the evidence result is specific to the reference-matching metric.
-\textbf{Limitations.} Reruns vary by up to 0.027 macro-F1; choices rest on 6 dev vote dates and the
-70B result on dev runs; Hit@5 is a proxy and two of five quotes come from uncited context; retrieval can
+\textbf{Limitations.} Reruns vary by up to 0.027 macro-F1; choices rest on 6 dev vote dates; Hit@5 is a proxy and two of five quotes come from uncited context; retrieval can
 pick the wrong vote in a multi-vote booklet; PyMuPDF reads tables as lines.
 
 \section{Ethics, use of AI and reproducibility}
@@ -271,7 +272,7 @@ dataset revision \texttt{fc2b276}; temperature 0, seed 0. Every experiment, incl
 \section{Conclusion and future work}\label{sec:future}
 We set out to see whether Apertus can help voters check what the official booklet really says, even
 when the claim and the booklet are in different languages. It can: given a claim, it finds the passage
-that matters, gives a verdict and points to the page, and it judges about nine in ten claims correctly on
+that matters, gives a verdict and points to the page, and it judges more than nine in ten claims correctly on
 votes it has never seen. The most useful lessons were less about the model than about how it is used:
 reading less of the booklet works better than reading all of it, short quotes are better evidence than
 whole pages, and the hardest part is not translation but knowing who said what.
@@ -281,8 +282,8 @@ same-language 0.875); actor-mentioning contradictions fail more often across lan
 against 2 of 41), and a prompt glossary of actor names did not fix it.
 \textbf{RQ2, context.} Reading the 16 retrieved passages instead of the whole booklet is both more
 accurate (0.861 against 0.735 on the same 60 claims) and uses 89\% fewer input tokens (3{,}446 against 31{,}402
-input tokens). The 8B reaches macro-F1 0.891 on 976 held-out claims, and the 70B adds 5--7 points on
-dev at identical input tokens. Only 26 of the 106 test errors are retrieval misses; the rest are decisions on retrieved text,
+input tokens). On the 976 held-out claims the 8B reaches macro-F1 0.891 and the 70B 0.930, at identical input
+tokens. Only 26 of the 106 test errors are retrieval misses; the rest are decisions on retrieved text,
 which we think fine-tuning can address.
 \textbf{RQ3, evidence.} Under the organisers' matcher, single verbatim sentences match the annotated
 evidence best (0.758, against 0.616 for passages and 0.535 for whole pages).

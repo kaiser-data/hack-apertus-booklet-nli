@@ -1,0 +1,323 @@
+✓ Initialized. View run at 
+https://modal.com/apps/kaiser-data/main/ap-8fRdgtnt0aA6rvu1gsMNhK
+Building image im-lQeLz3fYZUDEiiRpStpPUc
+
+Using legacy Image Builder version. We suggest upgrading at https://modal.com/settings/image-config.
+
+=> Step 0: FROM --platform=linux/amd64 python:3.12-slim
+Getting image source signatures
+Copying blob sha256:bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813
+Copying blob sha256:ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e
+Copying blob sha256:75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8
+Copying blob sha256:6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4
+Copying config sha256:df18428df8a0f9189c84e7424d214b4c50092af1f9dca5842a00c41c39bda316
+Writing manifest to image destination
+Unpacking OCI image
+   • unpacking rootfs ...     
+   • ... done                 
+   • unpacked image rootfs: /tmp/task-data/ta-01M4ZGFD37H6ZNG2TX8RNF875B/registry-unpack1cVwfY
+Copied image in 537.72ms
+
+=> Step 1: COPY --from=ghcr.io/astral-sh/uv:0.8.15 /uv /usr/local/bin/uv
+Getting image source signatures
+Copying blob sha256:62e48a8cb359f6e3f4375bbaac58fc12a40797b94590ce447f61d2f3f190c493
+Copying blob sha256:b5c1d8a02beb46ee3f43053f7563d00d605bb930f63bfbcececd04a7455f5b80
+Copying config sha256:b41f16da0a4ff28eaba924250b5c0600dea70fe45f025c028440903b649e7009
+Writing manifest to image destination
+Unpacking OCI image
+   • unpacking rootfs ...     
+   • ... done                 
+   • unpacked image rootfs: /tmp/task-data/ta-01M4ZGFD37H6ZNG2TX8RNF875B/registry-unpackQIQJ9F
+
+=> Step 2: WORKDIR /app
+
+=> Step 3: ENV UV_PYTHON_DOWNLOADS=never
+
+=> Step 4: COPY pyproject.toml uv.lock README.md ./
+
+=> Step 5: RUN uv sync --frozen --no-dev --no-install-project
+Using CPython 3.12.15 interpreter at: /usr/local/bin/python3
+Creating virtual environment at: .venv
+Downloading tokenizers (3.2MiB)
+Downloading pymupdf (24.6MiB)
+Downloading hf-xet (4.0MiB)
+Downloading numpy (16.0MiB)
+Downloading pillow (6.6MiB)
+Downloading pydantic-core (2.1MiB)
+Downloading onnxruntime (22.7MiB)
+Downloading openai (2.1MiB)
+ Downloading pydantic-core
+ Downloading tokenizers
+ Downloading hf-xet
+ Downloading pillow
+ Downloading pymupdf
+ Downloading onnxruntime
+ Downloading numpy
+ Downloading openai
+Prepared 39 packages in 2.26s
+Installed 39 packages in 340ms
+Bytecode compiled 3661 files in 1.31s
+ + annotated-types==0.8.0
+ + anyio==4.15.1
+ + certifi==2026.7.22
+ + charset-normalizer==3.5.2
+ + click==8.5.0
+ + fastembed==0.9.0
+ + filelock==4.1.0
+ + flatbuffers==25.12.19
+ + fsspec==2026.9.0
+ + h11==0.16.0
+ + hf-xet==1.7.0
+ + httpcore==1.0.9
+ + httpcore2==2.13.1
+ + httpx==0.28.1
+ + httpx2==2.13.1
+ + huggingface-hub==1.33.0
+ + idna==3.20
+ + jiter==0.17.0
+ + loguru==0.7.3
+ + mmh3==5.3.1
+ + numpy==2.5.4
+ + onnxruntime==1.31.0
+ + openai==3.28.0
+ + packaging==26.3
+ + pillow==12.3.0
+ + protobuf==7.36.2
+ + py-rust-stemmers==0.1.8
+ + pydantic==2.14.0
+ + pydantic-core==2.50.0
+ + pymupdf==1.28.2
+ + pyyaml==6.0.3
+ + requests==2.34.2
+ + sniffio==1.3.1
+ + tokenizers==0.23.3
+ + tqdm==4.70.1
+ + truststore==0.10.4
+ + typing-extensions==4.16.0
+ + typing-inspection==0.4.4
+ + urllib3==2.8.0
+
+=> Step 6: COPY src ./src
+
+=> Step 7: RUN uv sync --frozen --no-dev
+   Building booklet-nli @ file:///app
+      Built booklet-nli @ file:///app
+Prepared 1 package in 774ms
+Installed 1 package in 2ms
+Bytecode compiled 3661 files in 1.25s
+ + booklet-nli==0.1.0 (from file:///app)
+
+=> Step 8: ENV BOOKLET_NLI_EMBEDDERS=/app/models
+
+=> Step 9: RUN /app/.venv/bin/python -c "from booklet_nli.retrieve import _embed, DEFAULT_EMBEDDER; \
+_embed(DEFAULT_EMBEDDER, ['warm-up'], 'query')"
+
+[1AFetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+[1AFetching 5 files:  80%|████████  | 4/5 [00:00<00:00,  8.48it/s]
+[1AFetching 5 files: 100%|██████████| 5/5 [00:01<00:00,  3.27it/s]
+[1AFetching 5 files: 100%|██████████| 5/5 [00:01<00:00,  3.83it/s]
+
+=> Step 10: ENV HF_HUB_OFFLINE=1
+
+=> Step 11: ENV BOOKLET_NLI_DATA=/tmp/booklet-nli
+
+=> Step 12: ENTRYPOINT ["/app/.venv/bin/booklet-nli-cases"]
+Saving image...
+Image saved, took 1.83s
+
+Built image im-lQeLz3fYZUDEiiRpStpPUc in 17.30s
+
+
+Building image im-XlWSvd0DIhYVMScQEgUTQu
+
+Using legacy Image Builder version. We suggest upgrading at https://modal.com/settings/image-config.
+
+=> Step 0: FROM base
+
+=> Step 1: COPY /modal_requirements.txt /modal_requirements.txt
+
+=> Step 2: RUN python -m pip install --upgrade pip wheel uv
+Looking in indexes: http://pypi-mirror.modal.local:5555/simple
+Requirement already satisfied: pip in /usr/local/lib/python3.12/site-packages (25.0.1)
+Collecting pip
+  Downloading http://pypi-mirror.modal.local:5555/simple/pip/pip-26.2.1-py3-none-any.whl.metadata (4.6 kB)
+Collecting wheel
+  Downloading http://pypi-mirror.modal.local:5555/simple/wheel/wheel-0.48.0-py3-none-any.whl.metadata (2.3 kB)
+Collecting uv
+  Downloading http://pypi-mirror.modal.local:5555/simple/uv/uv-0.13.1-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
+Collecting packaging>=24.0 (from wheel)
+  Downloading http://pypi-mirror.modal.local:5555/simple/packaging/packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/pip/pip-26.2.1-py3-none-any.whl (1.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 1.1 GB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/wheel/wheel-0.48.0-py3-none-any.whl (33 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/uv/uv-0.13.1-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (17.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 17.3/17.3 MB 395.9 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/packaging/packaging-26.3-py3-none-any.whl (129 kB)
+Installing collected packages: uv, pip, packaging, wheel
+  Attempting uninstall: pip
+    Found existing installation: pip 25.0.1
+    Uninstalling pip-25.0.1:
+      Successfully uninstalled pip-25.0.1
+Successfully installed packaging-26.3 pip-26.2.1 uv-0.13.1 wheel-0.48.0
+
+=> Step 3: RUN uv pip install --system --compile-bytecode --no-cache --no-deps -r /modal_requirements.txt
+Using Python 3.12.15 environment at: /usr/local
+Resolved 15 packages in 108ms
+Downloading aiohttp (1.2MiB)
+   Building grpclib==0.4.7
+ Downloaded aiohttp
+      Built grpclib==0.4.7
+Prepared 15 packages in 812ms
+Installed 15 packages in 33ms
+Bytecode compiled 212 files in 150ms
+ + aiohappyeyeballs==2.4.3
+ + aiohttp==3.10.8
+ + aiosignal==1.3.1
+ + attrs==24.2.0
+ + certifi==2024.8.30
+ + frozenlist==1.4.1
+ + grpclib==0.4.7
+ + h2==4.1.0
+ + hpack==4.0.0
+ + hyperframe==6.0.1
+ + idna==3.10
+ + multidict==6.1.0
+ + protobuf==5.29.6
+ + typing-extensions==4.12.2
+ + yarl==1.13.1
+
+=> Step 4: RUN rm /modal_requirements.txt
+Saving image...
+Image saved, took 950.43ms
+
+Built image im-XlWSvd0DIhYVMScQEgUTQu in 6.47s
+
+
+Building image im-Ii8uCFWlXPuAohHOLVIx2y
+
+Using legacy Image Builder version. We suggest upgrading at https://modal.com/settings/image-config.
+
+=> Step 0: FROM base
+
+=> Step 1: ENTRYPOINT []
+Saving image...
+Image saved, took 408.29ms
+
+Built image im-Ii8uCFWlXPuAohHOLVIx2y in 1.22s
+
+
+✓ Created objects.
+├── ✓ Uploaded 
+│   /Users/marty/claude-projects/hackathon/hack-apertus/track_2a/modal/check_ima
+│   ge.py
+├── ✓ Uploaded /Users/marty/claude-projects/hackathon/hack-apertus/track_2a
+├── ✓ Created Function online.
+└── ✓ Created Function offline.
+== online: 1952/1952 predictions
+1952 cases, model swiss-ai/Apertus-v1.5-70B
+  20/1952
+  40/1952
+  60/1952
+  80/1952
+  100/1952
+  120/1952
+  140/1952
+  160/1952
+  180/1952
+  200/1952
+  220/1952
+  240/1952
+  260/1952
+  280/1952
+  300/1952
+  320/1952
+  340/1952
+  360/1952
+  380/1952
+  400/1952
+  420/1952
+  440/1952
+  460/1952
+  480/1952
+  500/1952
+  520/1952
+  540/1952
+  560/1952
+  580/1952
+  600/1952
+  620/1952
+  640/1952
+  660/1952
+  680/1952
+  700/1952
+  720/1952
+  740/1952
+  760/1952
+  780/1952
+  800/1952
+  820/1952
+  840/1952
+  860/1952
+  880/1952
+  900/1952
+  920/1952
+  940/1952
+  960/1952
+  980/1952
+  1000/1952
+  1020/1952
+  1040/1952
+  1060/1952
+  1080/1952
+  1100/1952
+  1120/1952
+  1140/1952
+  1160/1952
+  1180/1952
+  1200/1952
+  1220/1952
+  1240/1952
+  1260/1952
+  1280/1952
+  1300/1952
+  1320/1952
+  1340/1952
+  1360/1952
+  1380/1952
+  1400/1952
+  1420/1952
+  1440/1952
+  1460/1952
+  1480/1952
+  1500/1952
+  1520/1952
+  1540/1952
+  1560/1952
+  1580/1952
+  1600/1952
+  1620/1952
+  1640/1952
+  1660/1952
+  1680/1952
+  1700/1952
+  1720/1952
+  1740/1952
+  1760/1952
+  1780/1952
+  1800/1952
+  1820/1952
+  1840/1952
+  1860/1952
+  1880/1952
+  1900/1952
+  1920/1952
+  1940/1952
+wrote 1952 predictions to /output/predictions.jsonl; 1655.9 s wall, of which ~11.6 s with no LLM request in flight (approximate) (6 ms per case)
+  v1.1-row-0-B entailment [None] {'input_tokens': 1164, 'output_tokens': 50, 'inference_time_ms': 487466}
+  v1.1-row-5-B entailment [None] {'input_tokens': 1146, 'output_tokens': 56, 'inference_time_ms': 487590}
+  v1.1-row-4-B entailment [None] {'input_tokens': 1054, 'output_tokens': 62, 'inference_time_ms': 487807}
+  v1.1-row-1-B entailment [] {'input_tokens': 1697, 'output_tokens': 83, 'inference_time_ms': 489301}
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/kaiser-data/main/ap-8fRdgtnt0aA6rvu1gsMNhK

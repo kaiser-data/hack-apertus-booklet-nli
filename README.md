@@ -26,11 +26,12 @@ and it is not voting advice.
 | Held-out test, 976 claims, 14 unseen vote dates | 8B | **0.891** (95% CI 0.869–0.913) | – | – | 3,424 |
 | Same 60 test claims, **whole booklet** in the prompt | 8B | 0.735 | – | – | 31,402 |
 | Dev, 150 claims per task, organisers' scorer | 8B | 0.857 | 0.930 | 0.768 | 3,349 |
-| Dev, 150 claims per task, organisers' scorer | **70B** | **0.905–0.925** | **0.979–0.986** | **0.808** | 3,349 |
+| Dev, 150 claims per task, organisers' scorer, mean of 4 runs | 70B | 0.918 | 0.977 | 0.816 | 3,349 |
+| **Held-out test, 976 claims per task, organisers' scorer** | **70B** | **0.930** (95% CI 0.909–0.950) | **0.970** | **0.844** | 3,446 |
 
-Reading 16 retrieved passages instead of the whole booklet is more accurate at a ninth of the
-tokens. The 70B rows are two development runs. Where the model still fails, and what we tried
-against it, is in the report.
+The submitted image uses the 70B. Reading 16 retrieved passages instead of the whole booklet is more
+accurate at a ninth of the tokens. Intervals are bootstrapped over the 14 test vote dates. Where the
+model still fails, and what we tried against it, is in the report.
 
 ## Efficiency and cost
 

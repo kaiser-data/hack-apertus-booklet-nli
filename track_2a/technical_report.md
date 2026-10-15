@@ -261,6 +261,13 @@ scored with the starter's `evaluate.py`; the final row ran the Docker image itse
   0.828, 3,349 tokens; k = 8 F1 0.900, evidence 0.677, 1,827 tokens. The token saving pays off only
   if other teams use more than ~1,500 tokens per case; the evidence loss is certain. The same run
   measured 0.22 s of non-LLM time per case (33 of 386 s), the honest figure for an A-only container.
+- **70B on the held-out test split** (submitted image, organisers' scorer, 976 claims per task,
+  run once): task A 0.930 (vote-date-clustered 95% CI 0.909–0.950), task B 0.970 (0.952–0.983),
+  evidence Hit@5 0.844 (550/652); 3,446 / 2,013 input tokens. Dev, four 70B runs: task A 0.905, 0.912,
+  0.925, 0.932 (mean 0.918), task B 0.965–0.986 (mean 0.977). Files: `runs/contract-test-n976/`.
+- **Actor-aware verification, rejected.** `--actor-verify`: Apertus first names who holds the position
+  in claim and passages, then labels. Dev: 8B task A 0.857 → 0.856, task B 0.930 → 0.874; 70B task A
+  0.925 → 0.865, task B 0.979 → 0.925. It makes the model over-commit. Not used.
 - **Cross-lingual actor glossary, rejected.** An optional prompt section (`--actor-glossary`,
   `nli.py::ACTOR_GLOSSARY`) mapping Bundesrat/Conseil fédéral/Consiglio federale and the initiative and
   referendum committees across languages, aimed at the largest cross-lingual error class. Dev, 150

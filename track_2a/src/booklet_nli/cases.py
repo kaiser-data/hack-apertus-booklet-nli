@@ -108,7 +108,8 @@ class TimedLLM:
 
 
 def answer(llm: LLM, case: dict, root: Path, k: int, embedder: str, use_vote: bool,
-           booklets: Booklets | None = None, glossary: bool = False) -> dict:
+           booklets: Booklets | None = None, glossary: bool = False,
+           actor_verify: bool = False) -> dict:
     start = time.perf_counter()
     claim = case["claim"]["text"]
     vote = case.get("vote") if use_vote else None
@@ -119,7 +120,7 @@ def answer(llm: LLM, case: dict, root: Path, k: int, embedder: str, use_vote: bo
         context = sorted(ranked[:k], key=lambda p: p.id)
     else:
         ranked = context = [Passage(0, 0, "", case["reference"]["text"])]
-    v = judge(llm, context, claim, vote, glossary)
+    v = judge(llm, context, claim, vote, glossary, actor_verify)
     if "booklet" not in case:
         items = [{"page": None, "text": p.text[:MAX_EVIDENCE_CHARS]} for p in v.evidence[:1]]
     else:  # always quote: a wrong "neutral" can still cite the right sentence, and only the
@@ -136,11 +137,11 @@ def _response(case_id: str, label: int, evidence: list[dict], input_tokens: int,
 
 
 def _safe_answer(llm: LLM, case: dict, root: Path, k: int, embedder: str, use_vote: bool,
-                 booklets: Booklets, glossary: bool = False) -> dict:
+                 booklets: Booklets, glossary: bool = False, actor_verify: bool = False) -> dict:
     start = time.perf_counter()
     for attempt in range(ATTEMPTS):  # the OpenAI client itself retries 429/5xx with backoff
         try:
-            return answer(llm, case, root, k, embedder, use_vote, booklets, glossary)
+            return answer(llm, case, root, k, embedder, use_vote, booklets, glossary, actor_verify)
         except Exception as exc:  # noqa: BLE001 - one bad case must not lose the others
             print(f"{case.get('id')}: attempt {attempt + 1} failed: {exc!r}", file=sys.stderr)
             time.sleep(5)
@@ -159,6 +160,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--no-vote", action="store_true", help="leave the vote name out")
     parser.add_argument("--actor-glossary", action="store_true",
                         help="add the cross-lingual actor glossary to the prompt (experimental)")
+    parser.add_argument("--actor-verify", action="store_true",
+                        help="ask Apertus to state who holds the position before the label (experimental)")
     args = parser.parse_args(argv)
 
     # Split on "\n" only: str.splitlines() also breaks at U+2028 inside JSON strings.
@@ -175,7 +178,7 @@ def main(argv: list[str] | None = None) -> None:
 
     def run(case: dict) -> dict:
         return _safe_answer(llm, case, root, args.k, args.embedder, not args.no_vote, booklets,
-                            args.actor_glossary)
+                            args.actor_glossary, args.actor_verify)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with ThreadPoolExecutor(args.workers) as pool, args.output.open("w", encoding="utf-8") as out:

@@ -35,7 +35,7 @@ def _run(files: dict[str, bytes], env: dict[str, str], k: int = 16,
 
 
 @app.function(secrets=[modal.Secret.from_name("apertus-nli-api-key")], cpu=4, memory=4096,
-              timeout=3600)
+              timeout=3 * 3600)
 def online(files: dict[str, bytes], base_url: str, model: str, k: int = 16,
            extra: tuple[str, ...] = ()) -> tuple[str, str]:
     import os
@@ -57,13 +57,16 @@ def offline(files: dict[str, bytes]) -> tuple[str, str]:
 def main(cases: str = str(ROOT / "examples"),
          base_url: str = "https://kaiser-data--apertus-nli-serve.modal.run/v1",
          skip_offline: bool = False, model: str = "",
-         out: str = "image-check-predictions.jsonl", k: int = 16, glossary: bool = False):
+         out: str = "image-check-predictions.jsonl", k: int = 16, glossary: bool = False,
+         workers: int = 6, actor_verify: bool = False):
     root = Path(cases)
     names = ["cases.jsonl"] + [f"booklets/{p.name}" for p in (root / "booklets").glob("*.pdf")]
     files = {n: (root / n).read_bytes() for n in names}
     n_cases = len(files["cases.jsonl"].decode().splitlines())
     runs = [("online", lambda: online.remote(files, base_url, model, k,
-                                                   ("--actor-glossary",) if glossary else ()))]
+                                                   (("--actor-glossary",) if glossary else ())
+                                                   + (("--actor-verify",) if actor_verify else ())
+                                                   + ("--workers", str(workers))))]
     if not skip_offline:
         runs.insert(0, ("offline", lambda: offline.remote(files)))
     for name, call in runs:

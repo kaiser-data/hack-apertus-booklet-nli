@@ -56,6 +56,22 @@ SCHEMA = {
     "additionalProperties": False,
 }
 
+# Optional (--actor-verify): state who holds the position before deciding. The JSON fields are
+# generated in order, so "actors" comes first and the label last.
+ACTOR_VERIFY = """
+
+Before the label, fill "actors": who holds the position in the claim, and who holds it in the passages \
+(Federal Council, Parliament, initiative committee, referendum committee, cantons, or none). A claim \
+that gives a position to a different actor than the passages is a contradiction; if the passages do \
+not say what that actor thinks, it is neutral."""
+
+SCHEMA_ACTORS = {
+    "type": "object",
+    "properties": {"actors": {"type": "string"}, **SCHEMA["properties"]},
+    "required": ["actors", *SCHEMA["required"]],
+    "additionalProperties": False,
+}
+
 _JSON = re.compile(r"\{.*\}", re.DOTALL)
 
 
@@ -122,15 +138,17 @@ def verify(llm: LLM, booklet: str, claim: str, mode: str = "rag", k: int = 16,
 
 
 def judge(llm: LLM, context: list[Passage], claim: str, vote: str | None = None,
-          glossary: bool = False) -> Verdict:
+          glossary: bool = False, actor_verify: bool = False) -> Verdict:
     """One Apertus call: the claim against the given passages. `vote` names the proposal."""
     about = f"Vote: {vote}\n" if vote else ""
     messages = [
-        {"role": "system", "content": SYSTEM + (ACTOR_GLOSSARY if glossary else "")},
+        {"role": "system", "content": SYSTEM + (ACTOR_GLOSSARY if glossary else "")
+         + (ACTOR_VERIFY if actor_verify else "")},
         {"role": "user",
          "content": f"Passages:\n\n{format_passages(context)}\n\n{about}Claim: {claim}"},
     ]
-    out = llm.complete(messages, max_tokens=MAX_TOKENS, json_schema=SCHEMA)
+    out = llm.complete(messages, max_tokens=MAX_TOKENS,
+                       json_schema=SCHEMA_ACTORS if actor_verify else SCHEMA)
     label, reason, ids = parse_verdict(out.text)
     by_id = {p.id: p for p in context}
     # Unparseable output abstains as neutral and is counted as a parse failure.
