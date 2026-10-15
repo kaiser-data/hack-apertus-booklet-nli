@@ -32,11 +32,29 @@ Reading 16 retrieved passages instead of the whole booklet is more accurate at a
 tokens. The 70B rows are two development runs. Where the model still fails, and what we tried
 against it, is in the report.
 
+## Efficiency and cost
+
+| Per claim | Apertus-v1.5-8B | Apertus-v1.5-70B |
+|---|---|---|
+| LLM input tokens (booklet / given passage) | 3,349 / 2,286 | 3,349 / 2,286 |
+| LLM output tokens (booklet / given passage) | 86 / 75 | 91 / 76 |
+| Whole booklet in the prompt instead (baseline) | 31,402 input tokens | – |
+| End-to-end time in the image, median (booklet / given passage) | 3.9 s / 2.9 s | 4.9 s / 2.9 s |
+| Processing outside the LLM (parsing, search, quotes) | 0.22 s | 0.22 s |
+| GPU used | 1× NVIDIA L40S | 2× NVIDIA H200 |
+| GPU cost per 1,000 claims | ≈ $0.46 | ≈ $3.75–6.48 |
+
+One Apertus call per claim. Costs use Modal's list prices (L40S $1.95/h, H200 $4.54/h each,
+October 2026) and our measured wall time on a warm server with 6 parallel requests; more parallel
+requests lower them, and idle minutes before the server scales down and cold starts (a few minutes)
+come on top. Retrieval runs on CPU in the container. Measurements: dev runs in
+[`track_2a/runs/contract-dev-n150/`](track_2a/runs/contract-dev-n150); the 0.22 s is a booklet-only run.
+
 ## See it
 
 <p align="center">
-  <img src="track_2a/docs/img/demo.png" width="49%"
-       alt="Demo: a French claim checked against the German booklet of 9 June 2024; the booklet supports it, with cited pages 42 and 49">
+  <img src="track_2a/docs/img/demo-verdict.png" width="49%"
+       alt="Demo: a French claim checked against the German booklet of 9 June 2024; the booklet supports it, with cited page 42">
   <img src="track_2a/docs/img/explorer-claims.png" width="49%"
        alt="Explorer: one of the 976 test claims with Apertus's verdict, its reason and the cited page">
 </p>

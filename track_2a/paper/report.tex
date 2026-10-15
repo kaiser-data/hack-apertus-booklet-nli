@@ -211,8 +211,8 @@ model lists passage numbers until the output cap); excluding those, retrieval st
 \end{figure}
 
 \textbf{RQ2, context.} Sixteen retrieved passages beat the whole booklet at a ninth of the tokens
-(Fig.~\ref{fig:context}); on dev, $k=8$ scored 0.850 against 0.890 for $k=16$. With the 70B, $k=8$
-saves 45\% of tokens but cuts evidence Hit@5 from 0.828 to 0.677 (task-A-only run), so we keep $k=16$.
+(Fig.~\ref{fig:context}). Halving the context ($k=8$) saves 45\% of tokens but costs F1 (8B dev 0.850
+vs 0.890) and evidence (70B 0.677 vs 0.828), so we keep $k=16$.
 Given the annotated passage instead (task B), the 8B scores 0.930 against 0.857: of its 21 task-A
 errors, 14 disappear, 7 remain and 3 new ones appear, so errors persist even with the reference text;
 separating retrieval, context interference and reasoning needs case-level analysis. Contradiction read as neutral is the main confusion (31 of 106 test
@@ -240,7 +240,10 @@ confirmation remains (Table~\ref{tab:main}).
 \textbf{Embedder cost.} Larger embedders retrieve better (recall@16 0.965 and 0.970 against 0.911) but
 need 83 and 192\,s of CPU per booklet against 3\,s; BM25 fusion did not help at $k=16$
 (Fig.~\ref{fig:evid}b). In a task-A-only container the submitted image spends 0.22\,s of non-LLM time
-per case.
+per case. \textbf{Inference cost.} One Apertus call per claim; end-to-end median 3.9\,s (8B) and
+4.9\,s (70B) per booklet claim. At Modal list prices and our measured throughput (warm server, 6 parallel
+requests) the GPU costs about \$0.46 per 1{,}000 claims for the 8B (one L40S) and \$3.75--6.48 for the
+70B (two H200).
 
 \section{Discussion}\label{sec:learned}
 \textbf{What we learned.} On this benchmark Apertus works across the three languages without a
