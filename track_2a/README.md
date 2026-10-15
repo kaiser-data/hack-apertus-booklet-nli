@@ -13,6 +13,14 @@ which passages Apertus gets to read (see [Models](#models)).
 A verdict says only what the booklet states, not whether a claim is true or how to vote. It is a
 model prediction, not political advice: check the cited passages.
 
+## Live
+
+[booklet-nli.pages.dev/demo](https://booklet-nli.pages.dev/demo/) (type a claim) ·
+[booklet-nli.pages.dev](https://booklet-nli.pages.dev/) (all 976 test answers, charts)
+
+<a href="https://booklet-nli.pages.dev/"><img src="docs/img/explorer-overview.png" width="70%"
+   alt="Results page: macro-F1 0.891 on the held-out test, 9x fewer tokens than the whole booklet, 4.5 s median response, and how the pipeline works"></a>
+
 ## Results
 
 On the held-out test split (976 claims, 14 votes not used during development): **macro-F1 0.891**,

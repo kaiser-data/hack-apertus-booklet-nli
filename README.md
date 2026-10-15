@@ -4,6 +4,25 @@
 or Italian) and a claim in any of the three languages. Apertus-v1.5-8B says whether the booklet
 **supports**, **contradicts** or **doesn't settle** the claim, and cites the pages it relied on.
 
+## Try it live
+
+**[booklet-nli.pages.dev/demo](https://booklet-nli.pages.dev/demo/)**: pick a booklet, type a claim in
+German, French or Italian, and get Apertus's verdict with the cited pages. The GPU sleeps when idle,
+so the first claim after a pause waits about 5 minutes. **[booklet-nli.pages.dev](https://booklet-nli.pages.dev/)**
+shows all 976 recorded test answers.
+
+<p align="center">
+  <a href="https://booklet-nli.pages.dev/demo/"><img src="track_2a/docs/img/demo.png" width="49%"
+     alt="Live demo: a French claim checked against the German booklet of 9 June 2024; Apertus answers that the booklet supports it and cites pages 42 and 49"></a>
+  <a href="https://booklet-nli.pages.dev/"><img src="track_2a/docs/img/explorer-claims.png" width="49%"
+     alt="Results explorer: one of the 976 test claims, French claim against a German booklet, with Apertus's verdict, its reason and the cited page"></a>
+</p>
+
+*Left: the live demo, a French claim against the German booklet of 9 June 2024. Right: the
+explorer, one of the 976 held-out test answers with its reason and cited page.*
+
+## Results and submission
+
 - **Held-out test (976 claims, 14 unseen vote dates), Apertus-v1.5-8B: macro-F1 0.891** (95% CI 0.871–0.909),
   about 3,400 prompt tokens per claim, 9× fewer than reading the whole booklet.
 - **Container image (amd64, public):** `ghcr.io/kaiser-data/hack-apertus-booklet-nli:latest`, built
