@@ -161,7 +161,7 @@ def fig_errors():
     cross = lambda p: p["claim_language"] != p["reference_language"]
     size = Counter(cross(p) for p in preds)
     errs = Counter((error_category(p, claims[p["id"]]), cross(p)) for p in preds if p["gold"] != p["pred"])
-    fig, ax = plt.subplots(figsize=(6.9, 2.3))
+    fig, ax = plt.subplots(figsize=(6.9, 1.95))
     y = list(range(len(ERROR_CATEGORIES)))[::-1]
     h = 0.36
     for k, (is_cross, color, label) in enumerate(((False, BLUE, f"same language (n = {size[False]})"),

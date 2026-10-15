@@ -105,21 +105,26 @@ so we split \emph{by vote date}, keeping the three language versions of a bookle
 dev 6 dates / 512 pairs (all design choices), test 14 dates / 976 pairs (run once).
 
 \section{Method}
-\textbf{Document processing.} PyMuPDF~\cite{pymupdf} extracts each page; words broken across lines are rejoined;
-text blocks are merged into passages of about 900 characters (195 of 7{,}610 longer, at most
-1{,}623) that never cross a page, each carrying
-its page number and PDF outline path (vote $\rightarrow$ part $\rightarrow$ subsection).
-\textbf{Retrieval.} \texttt{paraphrase-multilingual-MiniLM-L12-v2}~\cite{reimers2020,minilmcard}, run with
-fastembed~\cite{fastembed}, embeds claim
-and passages in one cross-lingual space, so a French claim retrieves German passages without
-translation; the 16 nearest passages are passed in document order.
-\textbf{Verification.} One Apertus call per case, temperature 0, constrained to a JSON schema
-\{\texttt{reason}, \texttt{evidence}, \texttt{label}\}. The prompt defines the three labels, names the
-vote, and treats a statement attributed to the wrong actor as a contradiction.
-\textbf{Evidence selection.} Up to five verbatim sentences with their page: the three closest to the
-claim from the passages Apertus cited, then two from the rest of its context.
-\textbf{Deployment.} The Docker image follows the evaluation contract (CPU only, no runtime
-downloads) and uses Apertus-v1.5-70B~\cite{apertus70b} when served, else the 8B~\cite{apertus8b}.
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{fig-pipeline.pdf}
+\caption{\textbf{The Büchli pipeline.} Booklet and claim may be in different languages; only the 16
+passages closest to the claim reach Apertus, which returns the label and the passages it relied on;
+verbatim sentences with their pages are quoted as evidence. Editable source:
+\texttt{paper/pipeline.excalidraw} (open at excalidraw.com).}
+\label{fig:pipeline}
+\end{figure}
+\textbf{Steps} (Fig.~\ref{fig:pipeline}). \emph{Split:} PyMuPDF~\cite{pymupdf} extracts each page,
+rejoins words broken across lines and merges text blocks into passages of about 900 characters (195 of
+7{,}610 longer) that never cross a page and keep the PDF outline path (vote $\rightarrow$ part
+$\rightarrow$ subsection). \emph{Search:} \texttt{paraphrase-multilingual-MiniLM-L12-v2}~\cite{reimers2020,minilmcard}
+(fastembed~\cite{fastembed}) embeds claim and passages in one cross-lingual space; the 16 nearest go to
+Apertus in document order. \emph{Decide:} one call, temperature 0, JSON schema \{\texttt{reason},
+\texttt{evidence}, \texttt{label}\}; the prompt defines the labels, names the vote and treats a
+statement attributed to the wrong actor as a contradiction. \emph{Quote:} up to five verbatim sentences
+with pages, three from the cited passages, then two from the rest of the context. The Docker image
+follows the evaluation contract (CPU only, no runtime downloads) and uses
+Apertus-v1.5-70B~\cite{apertus70b} when served, else the 8B~\cite{apertus8b}.
 
 \section{Experimental setup}
 \textbf{Metrics.} Macro-F1 over the three labels (primary); evidence Hit@5 with the organisers'
@@ -285,7 +290,7 @@ official text, and extend to cantonal and communal votes and to other countries,
 \medskip\noindent\emph{A voter can only decide well if a claim can be traced to the page that settles
 it; Apertus does that across German, French and Italian.}
 
-\small
+\footnotesize
 \bibliographystyle{unsrtnat}
 \bibliography{refs}
 \normalsize
@@ -293,7 +298,7 @@ it; Apertus does that across German, French and Italian.}
 \appendix
 \section{Example cases}\label{app:cases}
 \begin{table}[H]
-\centering\small
+\centering\footnotesize
 \begin{tabular}{@{}L{0.33\linewidth}L{0.38\linewidth}L{0.22\linewidth}@{}}
 \toprule
 Claim & What the booklet says & Verdict \\
@@ -321,7 +326,7 @@ Test claims \#1159 and \#1277; dev case \texttt{v1.1-row-1174-A}. Quotes verbati
 
 \section{Layout-aware parsing and visual page retrieval}\label{app:visual}
 \begin{table}[H]
-\centering\small
+\centering\footnotesize
 \begin{tabular}{@{}lccccl@{}}
 \toprule
 Method (338 dev claims, 18 booklets) & Hit@1 & Hit@3 & Hit@5 & Recall@16 & Cost per booklet \\
@@ -331,12 +336,11 @@ Docling items + MiniLM & -- & -- & -- & 0.923 & 45\,s CPU + 3\,s \\
 ColQwen2 over page images & \textbf{0.568} & \textbf{0.849} & \textbf{0.935} & -- & 5.3\,s GPU (L40S) \\
 \bottomrule
 \end{tabular}
-\caption{\textbf{Visual page retrieval finds the evidence page far more often.} Hit@$k$: a gold page
-among the top $k$ pages (MiniLM scores a page by its best passage); Recall@16: the annotated passage
-among the top 16 chunks. ColQwen2~\cite{faysse2024colpali} (\texttt{vidore/colqwen2-v1.0},
-colpali-engine 0.3.18, 110\,dpi); Docling~\cite{auer2024docling} 2.135, no OCR. One run each; gold pages
-are defined from PyMuPDF passages. It needs a GPU at query time, which the official run does not
-allow, so it is future work. Files: \texttt{runs/visual-bench-dev.json}, \texttt{runs/docling-bench-dev.json}.}
+\caption{\textbf{Visual page retrieval finds the evidence page far more often.} Hit@$k$: a gold page in
+the top $k$ (MiniLM scores a page by its best passage); Recall@16: the annotated passage in the top 16
+chunks. ColQwen2~\cite{faysse2024colpali} (\texttt{vidore/colqwen2-v1.0}, 110\,dpi), Docling~\cite{auer2024docling}
+2.135 without OCR; one run each. It needs a GPU at query time, so it is future work.
+Files: \texttt{runs/visual-bench-dev.json}, \texttt{runs/docling-bench-dev.json}.}
 \label{tab:visual}
 \end{table}
 

@@ -55,5 +55,6 @@ modal-smoke:
 # The technical report: figures from the committed run files, then LaTeX (Tectonic).
 report:
 	uv run --with matplotlib python paper/figures.py
+	uv run --with matplotlib python paper/pipeline_diagram.py
 	cd paper && tectonic -X compile report.tex --outdir .
 	cp paper/report.pdf kaiser-data_Report.pdf
