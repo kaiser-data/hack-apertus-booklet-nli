@@ -162,22 +162,33 @@ def fig_errors():
     size = Counter(cross(p) for p in preds)
     errs = Counter((error_category(p, claims[p["id"]]), cross(p)) for p in preds if p["gold"] != p["pred"])
     fig, ax = plt.subplots(figsize=(6.9, 1.95))
+    fig.subplots_adjust(left=0.27, right=0.70, top=0.85, bottom=0.21)
     y = list(range(len(ERROR_CATEGORIES)))[::-1]
-    h = 0.36
-    for k, (is_cross, color, label) in enumerate(((False, BLUE, f"same language (n = {size[False]})"),
-                                                   (True, ORANGE, f"cross-lingual (n = {size[True]})"))):
+    h = 0.34
+    groups = ((False, BLUE, f"same language (n = {size[False]})"),
+              (True, ORANGE, f"cross-lingual (n = {size[True]})"))
+    for k, (is_cross, color, label) in enumerate(groups):
         vals = [100 * errs[(c, is_cross)] / size[is_cross] for c in ERROR_CATEGORIES]
-        pos = [yy + (h / 2 if k == 0 else -h / 2) for yy in y]
-        ax.barh(pos, vals, height=h, color=color, label=label, edgecolor="white", linewidth=1)
-        for yy, v, c in zip(pos, vals, ERROR_CATEGORIES):
-            ax.text(v + 0.05, yy, f"{v:.1f}  ({errs[(c, is_cross)]})", va="center", fontsize=7, color=INK)
+        pos = [yy + (0.19 if k == 0 else -0.19) for yy in y]
+        ax.barh(pos, vals, height=h, color=color, label=label)
+        for c, v in zip(ERROR_CATEGORIES, vals):
             print(f"errors: {c} {'cross' if is_cross else 'same'}: {errs[(c, is_cross)]} = {v:.1f}/100")
+    # numbers in two aligned columns to the right of the plot, one row per category
+    for col, (is_cross, color, _) in zip((1.06, 1.27), groups):
+        ax.text(col, 1.02, "same" if not is_cross else "cross", transform=ax.transAxes,
+                ha="center", va="bottom", fontsize=7, color=color, fontweight="bold")
+        for yy, c in zip(y, ERROR_CATEGORIES):
+            v = 100 * errs[(c, is_cross)] / size[is_cross]
+            ax.text(col, yy, f"{v:.1f}  ({errs[(c, is_cross)]})", transform=ax.get_yaxis_transform(),
+                    ha="center", va="center", fontsize=7, color=INK)
     ax.set_yticks(y, ERROR_CATEGORIES)
-    ax.set_xlabel("Errors per 100 claims of the group (8B, test split; count in brackets)")
+    ax.set_ylim(-0.6, len(ERROR_CATEGORIES) - 0.4)
+    ax.set_xlabel("Errors per 100 claims of the group (8B, test split)")
     ax.grid(axis="y", visible=False)
-    ax.set_xlim(0, 4.6)
-    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2, fontsize=7.5)
-    fig.tight_layout()
+    ax.set_xlim(0, 4.5)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2, fontsize=7, handlelength=1.2)
+    ax.text(1.165, -0.13, "per 100 claims (count)", transform=ax.transAxes, ha="center", va="top",
+            fontsize=6.5, color=MUTED)
     fig.savefig(OUT / "fig-errors.pdf")
 
 
