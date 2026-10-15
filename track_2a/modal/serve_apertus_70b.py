@@ -1,4 +1,4 @@
-"""Serve the official swiss-ai/Apertus-v1.5-70B with vLLM on Modal (2x H100, tensor parallel).
+"""Serve the official swiss-ai/Apertus-v1.5-70B with vLLM on Modal (2x H200, tensor parallel).
 
 A copy of serve_apertus.py for the 70B model, as a separate app so the 8B server stays deployed.
 
@@ -20,7 +20,7 @@ MODEL = "swiss-ai/Apertus-v1.5-70B"
 # swiss-ai's own vLLM build for Apertus 1.5 (upstream support is pending), pinned by digest.
 IMAGE = ("ghcr.io/swiss-ai/vllm_apertus_1.5_release@"
          "sha256:d85533f251c8272218ae2e519510836376e5a335b44f2204f193018e37753bc6")
-GPU = "H100:2"
+GPU = "H200:2"
 TENSOR_PARALLEL = 2
 # Retrieved context is ~3.5k tokens and the longest task B reference ~8k; 32k leaves KV room.
 MAX_MODEL_LEN = 32768

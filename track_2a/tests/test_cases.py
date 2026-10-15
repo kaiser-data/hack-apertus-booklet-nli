@@ -11,6 +11,9 @@ class StubLLM:
     def __init__(self, text: str, fail: bool = False):
         self.text, self.fail, self.messages = text, fail, []
 
+    def pick(self, preferred):
+        return self.model
+
     def complete(self, messages, max_tokens, json_schema=None):
         if self.fail:
             raise ConnectionError("down")
@@ -88,3 +91,29 @@ def test_quotes_do_not_repeat_when_a_passage_is_cited_twice(monkeypatch):
     monkeypatch.setattr(cases, "embed_scores", lambda claim, texts, emb: [1.0] * len(texts))
     q = cases.quotes("claim", [p, p], [p], "e")
     assert len(q) == len({i["text"] for i in q}) == 2
+
+
+def test_pick_prefers_the_70b_when_served_and_falls_back_on_404():
+    import httpx
+    from openai import NotFoundError
+
+    from booklet_nli.config import LLMConfig
+    from booklet_nli.llm import LLM
+
+    llm = LLM(LLMConfig("x", "http://127.0.0.1:9/v1", "k"))
+    llm.served_models = lambda: ["swiss-ai/Apertus-v1.5-8B", "Apertus-v1.5-70B"]
+    assert llm.pick(["swiss-ai/Apertus-v1.5-70B", "swiss-ai/Apertus-v1.5-8B"]) == "Apertus-v1.5-70B"
+
+    llm.served_models = list  # no listing: try the first, keep the rest as fallbacks
+    assert llm.pick(["a/70B", "a/8B"]) == "a/70B"
+    calls = []
+
+    def create(**kw):
+        calls.append(kw["model"])
+        if kw["model"] == "a/70B":
+            raise NotFoundError("no such model", response=httpx.Response(
+                404, request=httpx.Request("POST", "http://x")), body=None)
+        return "ok"
+    llm.client.chat.completions.create = create
+    assert llm._create({"model": "ignored"}) == "ok" and calls == ["a/70B", "a/8B"]
+    assert llm.model == "a/8B"

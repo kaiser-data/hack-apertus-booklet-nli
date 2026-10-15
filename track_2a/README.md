@@ -87,7 +87,9 @@ make cases CASES=examples OUT=runs/cases-out    # the same, via make
 ```
 
 - Reads `BASE_URL` and `API_KEY` (falls back to `LLM_BASE_URL` / `LLM_API_KEY`); model
-  `LLM_NAME`, default `swiss-ai/Apertus-v1.5-8B`. One Apertus call per case.
+  `LLM_NAME`; unset, the entrypoint lists the endpoint's models and uses `swiss-ai/Apertus-v1.5-70B`
+  if served, otherwise `swiss-ai/Apertus-v1.5-8B` (dev: 70B 0.905–0.925 / 0.979–0.986 vs 8B
+  0.857 / 0.930, task A / B, same tokens). One Apertus call per case.
 - Uses the `vote` name to tell Apertus which proposal of a multi-vote booklet the claim is about.
 - Evidence: up to five verbatim sentences with their 1-based page, first from the passages
   Apertus cited, then from the rest of its context; task B evidence has `page: null`.

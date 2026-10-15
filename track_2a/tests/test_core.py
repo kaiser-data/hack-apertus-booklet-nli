@@ -79,3 +79,13 @@ def test_resume_refuses_a_run_with_different_settings(tmp_path):
         _check_resume(tmp_path, cfg, resuming=True)
     _check_resume(tmp_path, {**cfg, "max_tokens": 300}, resuming=True)  # only limit differs
     _check_resume(tmp_path, cfg, resuming=False)  # nothing to resume
+
+
+def test_bm25_prefers_the_exact_number_and_rrf_fuses():
+    from booklet_nli.retrieve import bm25_scores, rrf
+    texts = ["Der Satz steigt von 7,7 auf 8,1 Prozent.", "Die Initiative betrifft die Renten.",
+             "Der Bundesrat empfiehlt ein Nein."]
+    s = bm25_scores("Mehrwertsteuer 8,1 Prozent", texts)
+    assert s.argmax() == 0
+    import numpy as np
+    assert list(rrf(np.array([0.1, 0.9, 0.5]), s)[:1]) in ([0], [1])

@@ -25,6 +25,12 @@ jobs:
         with:
           lfs: false
 
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Unit tests and lint
+        working-directory: track_2a
+        run: uv sync --frozen --group dev && uv run pytest -q && uv run ruff check src tests modal scripts
+
       - uses: docker/setup-buildx-action@v3
 
       - name: Build (linux/amd64)

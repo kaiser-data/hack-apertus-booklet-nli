@@ -8,6 +8,7 @@ when it fails, and the process exits 0.
 
 import argparse
 import json
+import os
 import re
 import sys
 import threading
@@ -28,6 +29,8 @@ FROM_CITED = 3  # quotes from the passages Apertus cited, then from the rest of 
 _SENTENCE_END = re.compile(r"(?<=[.!?;:»])\s+(?=[A-ZÄÖÜÉÈÀ«\"(0-9])")
 MIN_QUOTE_CHARS = 30
 ATTEMPTS = 2
+# Dev, 150 claims per task: 70B 0.925 / 0.979 vs 8B 0.857 / 0.930 (task A / B), same tokens.
+PREFERRED_MODELS = ("swiss-ai/Apertus-v1.5-70B", "swiss-ai/Apertus-v1.5-8B")
 
 
 def _sentences(p: Passage) -> list[tuple[int, str]]:
@@ -83,8 +86,12 @@ class TimedLLM:
     """Wraps the LLM and records how long at least one request was in flight."""
 
     def __init__(self, llm: LLM):
-        self.llm, self.model = llm, llm.model
+        self.llm = llm
         self.lock, self.active, self.since, self.busy = threading.Lock(), 0, 0.0, 0.0
+
+    @property
+    def model(self) -> str:
+        return self.llm.model
 
     def complete(self, *args, **kwargs) -> Completion:
         with self.lock:
@@ -158,7 +165,10 @@ def main(argv: list[str] | None = None) -> None:
              if line.strip()]
     root = args.data_root or args.input.resolve().parent
     started = time.perf_counter()
-    llm = TimedLLM(LLM(llm_config(), timeout=180))
+    base = LLM(llm_config(), timeout=180)
+    if not os.environ.get("LLM_NAME"):  # default: the 70B if the endpoint serves it (§5.5)
+        base.pick(list(PREFERRED_MODELS))
+    llm = TimedLLM(base)
     booklets = Booklets(args.embedder)
     print(f"{len(cases)} cases, model {llm.model}", file=sys.stderr)
 

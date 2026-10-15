@@ -4,7 +4,7 @@
 or Italian) and a claim in any of the three languages. Apertus-v1.5-8B says whether the booklet
 **supports**, **contradicts** or **doesn't settle** the claim, and cites the pages it relied on.
 
-- **Held-out test (976 claims, 14 unseen vote dates): macro-F1 0.891** (95% CI 0.871–0.909),
+- **Held-out test (976 claims, 14 unseen vote dates), Apertus-v1.5-8B: macro-F1 0.891** (95% CI 0.871–0.909),
   about 3,400 prompt tokens per claim, 9× fewer than reading the whole booklet.
 - **Container image (amd64, public):** `ghcr.io/kaiser-data/hack-apertus-booklet-nli:latest`, built
   from `track_2a/Dockerfile` by [CI](.github/workflows/image.yml), which also runs the contract
@@ -13,7 +13,8 @@ or Italian) and a claim in any of the three languages. Apertus-v1.5-8B says whet
   /data/cases.jsonl --output /output/predictions.jsonl`
 - **Official evaluation contract:** the Docker image takes `--input /data/cases.jsonl --output
   /output/predictions.jsonl` (tasks A and B, `BASE_URL`/`API_KEY`, amd64, CPU, offline). On 150 dev
-  claims per task with the organisers' `evaluate.py`: task A 0.857, task B 0.944, evidence score 0.76.
+  claims per task with the organisers' `evaluate.py`, submitted image (Apertus-v1.5-70B, two
+  runs): task A 0.905–0.925, task B 0.979–0.986, evidence score 0.81 (with the 8B: 0.857 / 0.930 / 0.77).
   How to run it: [`track_2a/README.md`](track_2a/README.md#official-evaluation-contract-what-the-organisers-run).
 - **Live:** [booklet-nli.pages.dev](https://booklet-nli.pages.dev/) (every test answer) ·
   [try a claim](https://booklet-nli.pages.dev/demo/) (Apertus on a GPU that sleeps when idle; the

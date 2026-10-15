@@ -37,8 +37,9 @@ def _run(files: dict[str, bytes], env: dict[str, str]) -> tuple[str, str]:
               timeout=3600)
 def online(files: dict[str, bytes], base_url: str, model: str) -> tuple[str, str]:
     import os
+    # model "" leaves LLM_NAME unset, as in the official run: the entrypoint picks the model.
     return _run(files, {"BASE_URL": base_url, "API_KEY": os.environ["LLM_API_KEY"],
-                        "LLM_NAME": model,
+                        **({"LLM_NAME": model} if model else {}),
                         "BOOKLET_NLI_DATA": "/tmp/booklet-nli", "BOOKLET_NLI_EMBEDDERS": "/app/models",
                         "HF_HUB_OFFLINE": "1"})
 
@@ -53,7 +54,7 @@ def offline(files: dict[str, bytes]) -> tuple[str, str]:
 @app.local_entrypoint()
 def main(cases: str = str(ROOT / "examples"),
          base_url: str = "https://kaiser-data--apertus-nli-serve.modal.run/v1",
-         skip_offline: bool = False, model: str = "swiss-ai/Apertus-v1.5-8B",
+         skip_offline: bool = False, model: str = "",
          out: str = "image-check-predictions.jsonl"):
     root = Path(cases)
     names = ["cases.jsonl"] + [f"booklets/{p.name}" for p in (root / "booklets").glob("*.pdf")]

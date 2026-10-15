@@ -28,8 +28,9 @@ least as accurate as reading the whole booklet, more reliable, at a ninth of the
 third of the time.
 
 The Docker image implements the organisers' evaluation contract. On 150 dev claims per task, scored
-with their `evaluate.py`: **task A (booklet) 0.857, task B (given passage) 0.944**, evidence score
-**0.76** with verbatim sentence quotes, about 2,800 input tokens per case (§5.5).
+with their `evaluate.py`, with **Apertus-v1.5-70B** (the image's default when served): **task A
+(booklet) 0.905–0.925, task B (given passage) 0.979–0.986** (two runs), evidence score **0.81**; with the 8B 0.857 / 0.930 /
+0.77; 3,349 / 2,286 input tokens per case (A / B) either way (§5.5).
 
 ## 2. Architecture
 
@@ -65,7 +66,8 @@ Everything that touches the GPU sits behind an OpenAI-compatible endpoint, confi
 
 ## 3. Use of Apertus
 
-- **Model:** `swiss-ai/Apertus-v1.5-8B` (official weights, bf16, no fine-tuning, no quantisation).
+- **Model:** `swiss-ai/Apertus-v1.5-8B` for §5.1–5.4; the submitted image defaults to
+  `swiss-ai/Apertus-v1.5-70B` (falls back to the 8B; §5.5). Official weights, bf16, no fine-tuning.
 - **How it is used:** inference: zero-shot NLI with evidence selection.
 - **Where it runs:** Modal, one NVIDIA L40S, swiss-ai's own vLLM build for Apertus 1.5
   (`ghcr.io/swiss-ai/vllm_apertus_1.5_release`, pinned by digest), 128k context, prefix caching,
@@ -121,17 +123,11 @@ On the 60 shared claims, retrieval gets 11 claims right that the full booklet ge
 reverse happens 3 times. The paired difference is +0.127 (95% CI +0.012 to +0.252), but 5 of those
 11 are full-booklet parse failures, which count as neutral.
 
-*Why whole-booklet answers fail.* Every parse failure in both runs stopped at exactly the output
-cap. Inspecting one raw answer shows why: after a sensible `reason`, the `evidence` list runs
-150, 151, 152, … through consecutive passage numbers, so the `label` field, last in our schema,
-is never written. Raising the cap from 300 to 600 tokens and rerunning the 60 claims gave 6
-failures again (5 of them the same claims, now stopping at 600). This is a failure mode of long
-input, not of the budget. It can be scored two ways: counting failures as neutral, as the system
-does, retrieval leads by +0.127 (first run) or +0.091 (95% CI −0.004 to +0.197, rerun); excluding
-the 6 failed claims of the first run, by +0.053 (95% CI −0.056 to +0.168). Retrieval therefore scores
-higher on this sample, though the second interval includes zero, answers all of those claims (its one failure in the 60 is a
-different claim; 2 in 976 overall), and is clearly cheaper and faster. The 60 claims were drawn with a fixed seed and are not
-exactly balanced (24 entailment, 18 neutral, 18 contradiction).
+*Why whole-booklet answers fail.* Every parse failure stopped at the output cap: after a sensible
+`reason`, the `evidence` list runs 150, 151, 152, … so `label` (last in the schema) is never
+written. A 600-token cap gave 6 failures again (5 the same claims). Counting failures as neutral,
+retrieval leads by +0.127 (rerun +0.091, 95% CI −0.004 to +0.197); excluding the 6 failed claims,
+by +0.053 (CI −0.056 to +0.168). The 60 claims (seed 0) are 24 entailment, 18 neutral, 18 contradiction.
 
 \* Full-booklet latency is inflated by load: 12 concurrent requests of ~31k tokens share one GPU
 (the rerun also shared it with a dev run).
@@ -178,18 +174,13 @@ experiments in §5.3 came afterwards and used dev only.
   made things worse (fixed 2, broke 6; contradiction → neutral went from 7 to 9; paired difference
   −0.027, 95% CI −0.066 to +0.011), so it was reverted. The same change flipped 11 of 150 predictions at temperature 0, which also shows how
   large the noise is at n = 150: differences of a few claims on dev are not meaningful.
-- **Rerun noise.** Rerunning the chosen setting with only the output cap raised to 600 tokens (no
-  answer reached it; the longest was 225 tokens) changed 5 of 150 predictions and moved dev
-  macro-F1 from 0.890 to 0.864. Four of the five had prompts of identical length, so their
-  variation comes from the serving stack (batched GPU inference is not bit-exact at temperature 0);
-  the fifth had a different passage set (4,177 vs 3,744 prompt tokens). Across all 150 claims, 42
-  prompts differed in length between the two runs: near-tied passages were ranked differently
-  (see §7), so part of the rerun gap is retrieval variation, not only GPU nondeterminism. The paired bootstrap for this pair is +0.027 (95% CI +0.005 to
-  +0.056): it resamples claims but cannot see run-to-run variation, so its intervals are too narrow
-  for comparing two runs. The k=8 vs k=16 difference (+0.041) is only about 1.5 times this rerun gap,
-  and the test score 0.891 is a single run; one rerun on dev differed by 0.027.
-- **Embedder.** MiniLM was chosen because it was validated end to end and runs on CPU;
-  `multilingual-e5-large` could not be benchmarked on the 8 GB development laptop.
+- **Rerun noise.** Rerunning the chosen setting with only the output cap raised to 600 tokens (never
+  reached) changed 5 of 150 predictions and moved dev macro-F1 from 0.890 to 0.864. Four of the five
+  had identical prompts (batched GPU inference is not bit-exact at temperature 0); 42 of 150 prompts
+  differed because near-tied passages ranked differently (§7). The paired bootstrap resamples claims,
+  not runs, so its intervals are too narrow for comparing two runs: differences of ~0.03 on dev are
+  noise.
+- **Embedder.** MiniLM: validated end to end and fast on CPU.
 
 ### 5.3 Data-side experiments (dev, not adopted)
 
@@ -207,10 +198,8 @@ claims as §5.2.
   not improve (paired difference −0.013, 95% CI −0.072 to +0.050; 8 claims fixed, 10 broken), and
   evidence hit moved only from 0.707 to 0.727. Retrieval recall is not the binding constraint at
   k = 16. The code is kept on the branch `experiment/parser-v4`.
-- **Vote routing** (score each vote section by its three best passages, fill most of the context
-  from the winner, keep the four best global passages as a fallback) clearly hurt recall: the
-  section choice was wrong too often, and global ranking already concentrates on the right vote.
-  It was not run end to end, and its code was not kept.
+- **Vote routing** (fill the context from the best-scoring vote section) hurt recall: the section
+  choice was wrong too often. Not run end to end; code not kept.
 - Neither change was run on test, so the test result in §5.1 remains a single, untouched run.
 
 ### 5.4 Error analysis (dev, k=16, 16 errors)
@@ -235,12 +224,23 @@ scored with the starter's `evaluate.py`; the final row ran the Docker image itse
 | Without `vote`, passage-level evidence | 0.870 | 0.904 | 0.586 | 3,354 / 2,258 |
 | With `vote` in the prompt, passage-level evidence | 0.871 | 0.924 | 0.616 | 3,382 / 2,286 |
 | With `vote`, sentence quotes (image) | 0.857 | 0.944 | 0.758 | 3,349 / 2,286 |
-| **Same, after review fixes (submitted image)** | **0.857** | **0.930** | **0.768** | 3,349 / 2,286 |
+| Same, after review fixes (8B) | 0.857 | 0.930 | 0.768 | 3,349 / 2,286 |
+| **Same pipeline, Apertus-v1.5-70B, two runs (submitted default)** | **0.925 / 0.905** | **0.979 / 0.986** | **0.808 / 0.808** | 3,349 / 2,286 |
 
+- **70B.** Same prompt, retrieval and tokens (shared tokenizer); first run vs 8B, task A: 15 claims
+  fixed, 5 broken (+0.068); the second run (image picking the model itself) is +0.048; task B: 9
+  fixed, 2 broken. Both runs beat the 8B by about twice the rerun gap. The official clock excludes LLM time and
+  the proxy counts tokens, so the larger model costs nothing in either score. The entrypoint lists
+  the endpoint's models and uses the 70B if served, else the 8B (also on a "model not found" error).
+  Served on Modal with 2× H200 (tensor parallel) for this comparison.
+- **The gold passage as an upper bound.** Task B gives Apertus the annotated passage for the same
+  150 claims: 0.930 against 0.857 with our retrieval. Better retrieval can close at most that gap;
+  the remaining 7 % of errors are reasoning errors with the right text in hand.
 - **Evidence as sentences.** The scorer counts a citation if the shorter text fuzzily lies inside
   the longer. Whole passages often straddle the gold passage's boundary, and whole pages scored
   worse (0.535). Up to five verbatim sentences, the three closest to the claim from the passages
-  Apertus cited, then two from the rest of its context, raise the evidence score from 0.62 to
+  Apertus cited, then two from the rest of its retrieved context (supplementary, not cited by the
+  model; the live demo shows only cited passages), raise the evidence score from 0.62 to
   0.76 at no extra Apertus tokens. Labels are unchanged; task A F1 differs between the last two
   rows by two claims of rerun noise (§5.2).
 - **`vote`.** Naming the proposal helped task B by 3 claims and did not hurt task A; within noise, kept
@@ -267,11 +267,9 @@ scored with the starter's `evaluate.py`; the final row ran the Docker image itse
   different passage counts as a miss, and a cited passage can overlap the snippet without being the
   one that decides the claim, so 0.72 can be off in either direction. It is not a manual audit of
   citations.
-- **Latency** is measured client side over the internet against a serverless GPU, with 12
-  concurrent requests. A cold start (about 5 minutes) inflates the first requests of a run, which is
-  why we report medians; the per-claim seconds in `predictions.jsonl` include it. The first 36 test
-  claims were run from a heavily loaded laptop before the run moved to Modal; over the 940 claims
-  run on Modal the median is 4.47 s and the mean 8.71 s.
+- **Latency** is client side against a serverless GPU (12 concurrent requests; cold starts inflate
+  early requests, so we report medians). Over the 940 test claims run on Modal: median 4.47 s,
+  mean 8.71 s.
 - **Baselines.** The full-booklet comparison uses a 60-claim test subsample, not all 976 claims, to
   keep GPU cost low, and its size depends on how runaway answers are scored (§5.1); it is
   directional, not precise.
@@ -290,9 +288,8 @@ scored with the starter's `evaluate.py`; the final row ran the Docker image itse
 - **Determinism:** temperature 0, sample seed 0, split by hash of vote date. Embeddings computed on
   different CPUs can differ in the last digits and change the order of near-tied passages (seen
   once in a 3-claim check: same label, 4,548 vs 4,340 prompt tokens).
-- **Docker check:** `make run LIMIT=3` from the repository root, on a clean arm64 machine (Jetson
-  Orin, Docker 29) against the Modal endpoint, built the image and reproduced the reported test
-  predictions for those 3 claims exactly (same labels, same prompt token counts).
+- **Docker check:** CI builds the amd64 image, parses and embeds a booklet and runs the contract
+  with the network off before every push; `modal/check_image.py` runs it against Apertus (§5.5).
 - **Commands:**
 
 ```bash
@@ -310,13 +307,12 @@ claim; `metrics.json`) are in `track_2a/runs/`. A visual summary of the results 
 ## 8. Next steps
 
 - Use the given `vote` name for retrieval too (match it to the booklet outline), not only in the prompt.
+- Actor-aware verification: have Apertus state who claims what (actor, number, date, condition) in
+  the claim and in the cited text before the label, and measure it on a minimal-change challenge set
+  (same claim with one actor, number or negation changed, in DE/FR/IT) with repeated dev runs.
 - A cross-encoder re-ranker over the top 30 passages, to raise recall at k ≤ 16 and cut tokens.
-- Two-pass verification for claims predicted neutral: ask Apertus to look for an incompatible
-  statement explicitly, only when a passage is close in embedding space.
 - Stop runaway evidence lists: put `label` before `evidence` in the schema and cap the list
   (e.g. `maxItems: 5`), then measure on dev with repeated runs.
-- Run a larger Apertus model on the same pipeline to see whether the contradiction/neutral confusion is
-  a capacity issue.
 
 ## License
 
