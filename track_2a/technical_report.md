@@ -200,6 +200,9 @@ claims as §5.2.
   k = 16. The code is kept on the branch `experiment/parser-v4`.
 - **Vote routing** (fill the context from the best-scoring vote section) hurt recall: the section
   choice was wrong too often. Not run end to end; code not kept.
+- **Larger embedders** (`modal/embed_bench.py`, 4 vCPU, 338 claims): recall@16 multilingual-e5-large
+  0.965, Qwen3-Embedding-0.6B 0.970 vs MiniLM 0.911, but 83 and ~200 s of CPU per booklet vs 3.3 s,
+  time the official clock counts; BM25 fusion did not help at k = 16. MiniLM stays.
 - Neither change was run on test, so the test result in §5.1 remains a single, untouched run.
 
 ### 5.4 Error analysis (dev, k=16, 16 errors)
@@ -230,19 +233,20 @@ scored with the starter's `evaluate.py`; the final row ran the Docker image itse
 - **70B.** Same prompt, retrieval and tokens (shared tokenizer); first run vs 8B, task A: 15 claims
   fixed, 5 broken (+0.068); the second run (image picking the model itself) is +0.048; task B: 9
   fixed, 2 broken. Both runs beat the 8B by about twice the rerun gap. The official clock excludes LLM time and
-  the proxy counts tokens, so the larger model costs nothing in either score. The entrypoint lists
+  the proxy counts tokens, so the larger model costs no input tokens and no counted time; output
+  tokens rise slightly (task A 86 → 92 per case). The entrypoint lists
   the endpoint's models and uses the 70B if served, else the 8B (also on a "model not found" error).
   Served on Modal with 2× H200 (tensor parallel) for this comparison.
-- **The gold passage as an upper bound.** Task B gives Apertus the annotated passage for the same
-  150 claims: 0.930 against 0.857 with our retrieval. Better retrieval can close at most that gap;
-  the remaining 7 % of errors are reasoning errors with the right text in hand.
+- **The gold passage as a comparison.** Task B gives Apertus the annotated passage for the same
+  150 claims: 0.930 against 0.857 with our retrieval (8B). Not a strict bound (retrieval can supply
+  other passages with the same facts), but most remaining errors happen with the right text in hand.
 - **Evidence as sentences.** The scorer counts a citation if the shorter text fuzzily lies inside
   the longer. Whole passages often straddle the gold passage's boundary, and whole pages scored
   worse (0.535). Up to five verbatim sentences, the three closest to the claim from the passages
   Apertus cited, then two from the rest of its retrieved context (supplementary, not cited by the
   model; the live demo shows only cited passages), raise the evidence score from 0.62 to
-  0.76 at no extra Apertus tokens. Labels are unchanged; task A F1 differs between the last two
-  rows by two claims of rerun noise (§5.2).
+  0.76 at no extra Apertus tokens. Labels are unchanged; task A F1 differs between the passage-level
+  and sentence-quote rows by two claims of rerun noise (§5.2).
 - **`vote`.** Naming the proposal helped task B by 3 claims and did not hurt task A; within noise, kept
   because the contract provides it for exactly this purpose.
 - **Processing time.** Booklets are parsed and embedded inside the worker threads, so this work

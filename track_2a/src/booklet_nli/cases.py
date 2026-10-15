@@ -165,7 +165,7 @@ def main(argv: list[str] | None = None) -> None:
              if line.strip()]
     root = args.data_root or args.input.resolve().parent
     started = time.perf_counter()
-    base = LLM(llm_config(), timeout=180)
+    base = LLM(llm_config(), timeout=120)
     if not os.environ.get("LLM_NAME"):  # default: the 70B if the endpoint serves it (§5.5)
         base.pick(list(PREFERRED_MODELS))
     llm = TimedLLM(base)

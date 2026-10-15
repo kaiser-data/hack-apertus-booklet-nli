@@ -1,0 +1,83 @@
+[
+  {
+    "embedder": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "claims": 338,
+    "booklets": 18,
+    "passages": 2418,
+    "recall_at_k": {
+      "1": 0.3107,
+      "3": 0.5562,
+      "5": 0.6775,
+      "8": 0.7692,
+      "12": 0.8491,
+      "16": 0.9112,
+      "20": 0.929
+    },
+    "hybrid_bm25_rrf_recall_at_k": {
+      "1": 0.3166,
+      "3": 0.5651,
+      "5": 0.6864,
+      "8": 0.8047,
+      "12": 0.8698,
+      "16": 0.9053,
+      "20": 0.9349
+    },
+    "embed_s_total": 59.0,
+    "embed_s_per_booklet": 3.3,
+    "query_ms": 31.9
+  },
+  {
+    "embedder": "Qwen/Qwen3-Embedding-0.6B-Q",
+    "claims": 338,
+    "booklets": 18,
+    "passages": 2418,
+    "recall_at_k": {
+      "1": 0.429,
+      "3": 0.713,
+      "5": 0.8905,
+      "8": 0.9438,
+      "12": 0.9586,
+      "16": 0.9704,
+      "20": 0.9822
+    },
+    "hybrid_bm25_rrf_recall_at_k": {
+      "1": 0.3905,
+      "3": 0.6834,
+      "5": 0.7574,
+      "8": 0.8521,
+      "12": 0.932,
+      "16": 0.9438,
+      "20": 0.9586
+    },
+    "embed_s_total": 3457.0,
+    "embed_s_per_booklet": 192.1,
+    "query_ms": 726.6
+  },
+  {
+    "embedder": "intfloat/multilingual-e5-large",
+    "claims": 338,
+    "booklets": 18,
+    "passages": 2418,
+    "recall_at_k": {
+      "1": 0.4704,
+      "3": 0.7544,
+      "5": 0.8491,
+      "8": 0.9201,
+      "12": 0.9408,
+      "16": 0.9645,
+      "20": 0.9734
+    },
+    "hybrid_bm25_rrf_recall_at_k": {
+      "1": 0.4527,
+      "3": 0.6864,
+      "5": 0.7751,
+      "8": 0.8402,
+      "12": 0.9083,
+      "16": 0.9497,
+      "20": 0.9882
+    },
+    "embed_s_total": 1501.9,
+    "embed_s_per_booklet": 83.4,
+    "query_ms": 112.2
+  }
+]

@@ -46,3 +46,4 @@ runs/*
 !runs/test-full-n60-max600/
 runs/**/*.log
 !runs/contract-dev-n150/
+!runs/embed-bench-dev.json

@@ -10,6 +10,10 @@ on:
     paths: ["track_2a/**", ".github/workflows/image.yml"]
   workflow_dispatch:
 
+concurrency:  # one publish at a time, so an older build never overwrites :latest
+  group: image-publish
+  cancel-in-progress: false
+
 permissions:
   contents: read
   packages: write

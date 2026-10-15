@@ -152,10 +152,23 @@ def test_a_context_length_400_does_not_switch_the_model():
     llm.pick(["a/70B", "a/8B"])
 
     def create(**kw):
-        raise BadRequestError("This model's maximum context length is 32768 tokens.",
-                              response=httpx.Response(400, request=httpx.Request("POST", "http://x")),
-                              body=None)
+        raise BadRequestError(
+            "This model's maximum context length is 32768 tokens.",
+            response=httpx.Response(400, request=httpx.Request("POST", "http://x")),
+            body={"object": "error", "type": "invalid_request_error", "code": 400,
+                  "message": "This model's maximum context length is 32768 tokens."})
     llm.client.chat.completions.create = create
     with pytest.raises(BadRequestError):
         llm._create({})
     assert llm.model == "a/70B"
+
+
+def test_listing_with_suffixed_ids_still_matches_and_keeps_fallbacks():
+    from booklet_nli.config import LLMConfig
+    from booklet_nli.llm import LLM
+
+    llm = LLM(LLMConfig("x", "http://127.0.0.1:9/v1", "k"))
+    llm.served_models = lambda: ["swiss-ai/Apertus-v1.5-70B-Instruct", "other/model"]
+    assert llm.pick(["swiss-ai/Apertus-v1.5-70B", "swiss-ai/Apertus-v1.5-8B"]) == (
+        "swiss-ai/Apertus-v1.5-70B-Instruct")
+    assert llm._fallbacks == ["swiss-ai/Apertus-v1.5-8B"]  # not listed, still tried last

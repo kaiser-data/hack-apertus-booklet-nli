@@ -144,7 +144,7 @@ Any OpenAI-compatible endpoint works, configured through `LLM_NAME`, `LLM_BASE_U
 
 | Role | Model | Where |
 |---|---|---|
-| NLI decision, evidence selection | `swiss-ai/Apertus-v1.5-8B` | GPU (vLLM) |
+| NLI decision, evidence selection | `swiss-ai/Apertus-v1.5-70B` (submitted image default) or `-8B` (test-split results, demo, fallback) | GPU (vLLM) |
 | Passage retrieval | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (via fastembed, ONNX) | CPU |
 
 ## Data

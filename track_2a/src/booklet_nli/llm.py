@@ -1,15 +1,24 @@
 """Thin OpenAI-compatible client: works against vLLM (Modal), Ollama or any compatible server."""
 
 import re
+import threading
 import time
 from dataclasses import dataclass
 
-from openai import BadRequestError, NotFoundError, OpenAI, PermissionDeniedError
+from openai import (
+    APIStatusError,
+    BadRequestError,
+    NotFoundError,
+    OpenAI,
+    PermissionDeniedError,
+    UnprocessableEntityError,
+)
 
 from .config import LLMConfig
 
 _UNSUPPORTED = re.compile(r"response_format|json_schema|guided|structured", re.IGNORECASE)
 # A proxy may reject a model it does not serve with 400 or 403 instead of 404.
+_CONTEXT = re.compile(r"context length|maximum context|too many tokens|too long", re.IGNORECASE)
 _UNKNOWN_MODEL = re.compile(
     r"model\b.{0,80}\b(does not exist|not found|unknown|invalid|not available|not supported|"
     r"no such|not allowed|not permitted)|\b(unknown|invalid|unsupported) model", re.IGNORECASE)
@@ -27,9 +36,10 @@ class LLM:
     def __init__(self, cfg: LLMConfig, timeout: float = 900, fallbacks: tuple[str, ...] = ()):
         self.model = cfg.name
         self.client = OpenAI(base_url=cfg.base_url, api_key=cfg.api_key, timeout=timeout,
-                             max_retries=4)
+                             max_retries=3)
         self._schema_supported = True
         self._fallbacks = list(fallbacks)  # tried in order if the server does not know a model
+        self._switch = threading.Lock()
 
     def served_models(self) -> list[str]:
         """Model ids the endpoint lists (empty if it does not support the listing)."""
@@ -40,17 +50,27 @@ class LLM:
             return []
 
     def pick(self, preferred: list[str]) -> str:
-        """Use the first preferred model the endpoint serves (matched case-insensitively,
-        ignoring any organisation prefix); keep the others as fallbacks."""
+        """Use the first preferred model the endpoint serves; keep the rest as fallbacks.
+
+        Matching ignores case and any organisation prefix and accepts suffixes such as
+        "-Instruct" ("Apertus-v1.5-70B" matches "swiss-ai/apertus-v1.5-70b-instruct"). Preferred
+        models the listing does not show stay at the end of the list, and any other listed
+        Apertus model after them, so an incomplete listing never removes a candidate.
+        """
         served = self.served_models()
+
         def find(want: str) -> str | None:
             tail = want.split("/")[-1].lower()
-            exact = [m for m in served if m.lower() == want.lower()]
-            loose = [m for m in served if m.lower().split("/")[-1] == tail]
-            return (exact or loose or [None])[0]
-        found = [m for m in (find(w) for w in preferred) if m]
-        chosen = found or preferred
-        self.model, self._fallbacks = chosen[0], list(chosen[1:])
+            ranked = ([m for m in served if m.lower() == want.lower()]
+                      + [m for m in served if m.lower().split("/")[-1] == tail]
+                      + [m for m in served if tail in m.lower()])
+            return ranked[0] if ranked else None
+
+        found = [m for m in dict.fromkeys(find(w) for w in preferred) if m]
+        rest = [w for w in preferred if w not in found and find(w) is None]
+        others = [m for m in served if "apertus" in m.lower() and m not in found]
+        chosen = list(dict.fromkeys(found + rest + others))
+        self.model, self._fallbacks = chosen[0], chosen[1:]
         return self.model
 
     def complete(self, messages: list[dict], max_tokens: int, json_schema: dict | None = None) -> Completion:
@@ -82,11 +102,27 @@ class LLM:
 
     def _create(self, kwargs: dict):
         while True:
+            model = self.model
             try:
-                return self.client.chat.completions.create(**{**kwargs, "model": self.model})
-            except (NotFoundError, PermissionDeniedError, BadRequestError) as exc:
-                rejected = not isinstance(exc, BadRequestError) or (
-                    _UNKNOWN_MODEL.search(str(exc)) and not _UNSUPPORTED.search(str(exc)))
-                if not (rejected and self._fallbacks):
+                return self.client.chat.completions.create(**{**kwargs, "model": model})
+            except (NotFoundError, PermissionDeniedError, BadRequestError,
+                    UnprocessableEntityError) as exc:
+                if not (_rejects_model(exc) and self._fallbacks):
                     raise
-                self.model = self._fallbacks.pop(0)  # the server does not serve this model
+                with self._switch:  # one switch per failed model, whatever the thread
+                    if self.model == model and self._fallbacks:
+                        self.model = self._fallbacks.pop(0)
+
+
+def _rejects_model(exc: APIStatusError) -> bool:
+    """True if the server says it does not serve the requested model. Only the error message is
+    read (not the error body: its "type" field, e.g. "invalid_request_error", says nothing about
+    the model), and a context-length error never counts."""
+    message = getattr(exc, "message", "") or ""
+    body = getattr(exc, "body", None)
+    if isinstance(body, dict):
+        inner = body.get("error", body)
+        message = f"{message} {inner.get('message', '') if isinstance(inner, dict) else ''}"
+    if _CONTEXT.search(message) or _UNSUPPORTED.search(message):
+        return False
+    return isinstance(exc, NotFoundError) or bool(_UNKNOWN_MODEL.search(message))
