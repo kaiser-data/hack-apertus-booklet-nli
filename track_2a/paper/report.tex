@@ -254,28 +254,31 @@ service would differ: users wait for each answer and every 70B query costs GPU t
 a median 4.5\,s at 0.891 on test), while booklets could be embedded once ahead of time, which removes
 most of the cost of stronger embedders. Retrieving instead of reading everything holds in both settings;
 the evidence result is specific to the reference-matching metric.
-\textbf{Limitations.} A near-repeat of the 8B dev run moved macro-F1 by 0.027 (batched GPU inference
-is not bit-exact); decisions rest on 6 dev vote dates and the 70B result on dev runs only. Hit@5 is a
-proxy, and two of five quotes come from context the model did not cite (the demo shows only cited
-passages). Retrieval can pick the wrong vote in a multi-vote booklet, and PyMuPDF reads tables as lines.
+\textbf{Limitations.} Reruns vary by up to 0.027 macro-F1; choices rest on 6 dev vote dates and the
+70B result on dev runs; Hit@5 is a proxy and two of five quotes come from uncited context; retrieval can
+pick the wrong vote in a multi-vote booklet; PyMuPDF reads tables as lines.
 
 \section{Ethics, use of AI and reproducibility}
-\textbf{Ethics.} A verdict states what the booklet says, not whether a claim is true or how to vote;
-it is a model prediction to check against the cited page, not political advice. The benchmark contains no personal data; the live demo processes visitor IP
-addresses only to enforce daily rate limits and does not store claims.
+\textbf{Ethics.} A verdict states what the booklet says, not whether a claim is true or how to vote:
+a model prediction to check against the cited page, not advice. The demo processes visitor IPs only for
+rate limits and stores no claims.
 \textbf{Use of AI.} Apertus decides and MiniLM retrieves. Development used Claude Code (Claude Opus
 5.5) for implementation and experiments under the author's direction, plus read-only reviews by Codex
 and Grok; every finding was checked against the code and every number against \texttt{runs/}.
 \textbf{Reproducibility.} Code, run files and all predictions are in the repository (Apache-2.0);
-dataset revision \texttt{fc2b276}; temperature 0, seed 0. Every experiment, including rejected ones
-(prompt changes, parser v4, vote routing, a $k$\,=\,8$\rightarrow$16 cascade), is documented in the
-archival \texttt{technical\_report.md}.
+dataset revision \texttt{fc2b276}; temperature 0, seed 0. Every experiment, including the rejected ones, is in the archival \texttt{technical\_report.md}.
 
 \section{Conclusion and future work}\label{sec:future}
-\textbf{RQ1, languages.} Apertus handles all nine claim/booklet language pairs without a translation
-step: cross-lingual pairs score 0.899 against 0.875 for same-language ones. The weak spot is who holds
-a position: actor-mentioning contradictions fail 14 of 107 times across languages against 2 of 41
-within one language, and a prompt glossary of actor names did not fix it.
+We set out to see whether Apertus can help voters check what the official booklet really says, even
+when the claim and the booklet are in different languages. It can: given a claim, it finds the passage
+that matters, gives a verdict and points to the page, and it judges about nine in ten claims correctly on
+votes it has never seen. The most useful lessons were less about the model than about how it is used:
+reading less of the booklet works better than reading all of it, short quotes are better evidence than
+whole pages, and the hardest part is not translation but knowing who said what.
+
+\textbf{RQ1, languages.} All nine language pairs work without translation (cross-lingual 0.899,
+same-language 0.875); actor-mentioning contradictions fail more often across languages (14 of 107
+against 2 of 41), and a prompt glossary of actor names did not fix it.
 \textbf{RQ2, context.} Reading the 16 retrieved passages instead of the whole booklet is both more
 accurate (0.861 against 0.735 on the same 60 claims) and nine times cheaper (3{,}446 against 31{,}402
 input tokens). The 8B reaches macro-F1 0.891 on 976 held-out claims, and the 70B adds 5--7 points on
@@ -283,16 +286,13 @@ dev at identical input tokens. Only 26 of the 106 test errors are retrieval miss
 which we think fine-tuning can address.
 \textbf{RQ3, evidence.} Under the organisers' matcher, single verbatim sentences match the annotated
 evidence best (0.758, against 0.616 for passages and 0.535 for whole pages).
-Overall, the system meets the evaluation contract, uses one Apertus call per claim at about \$0.46
-(8B) to \$6.48 (70B) of GPU time per 1{,}000 claims, and cites the page that settles each verdict.
+The system meets the evaluation contract with one Apertus call per claim, at about \$0.46 (8B) to
+\$6.48 (70B) of GPU time per 1{,}000 claims.
 
 \textbf{Future work.} Actor-aware verification tested on minimal pairs; distilling the 70B into the 8B
 on more vote dates; visual page retrieval (ColQwen2 finds the gold page in the top 5 for 93.5\% of
 claims against 71.3\%, Appendix~\ref{app:visual}); and serving voters who never read the booklet,
 opinion surveys and political barometers, cantonal votes and other countries.
-
-\medskip\noindent\emph{A voter can only decide well if a claim can be traced to the page that settles
-it; Apertus does that across German, French and Italian.}
 
 \footnotesize
 \bibliographystyle{unsrtnat}
@@ -331,17 +331,17 @@ Test claims \#1159 and \#1277; dev case \texttt{v1.1-row-1174-A}. Quotes verbati
 \section{Layout-aware parsing and visual page retrieval}\label{app:visual}
 \begin{table}[H]
 \centering\footnotesize
-\begin{tabular}{@{}lccccl@{}}
+\begin{tabular}{@{}lccl@{}}
 \toprule
-Method (338 dev claims, 18 booklets) & Hit@1 & Hit@3 & Hit@5 & Recall@16 & Cost per booklet \\
+Method (338 dev claims, 18 booklets) & Page Hit@5 & Passage recall@16 & Cost per booklet \\
 \midrule
-PyMuPDF passages + MiniLM (submitted) & 0.317 & 0.586 & 0.713 & 0.911 & 3\,s CPU \\
-Docling items + MiniLM & -- & -- & -- & 0.923 & 45\,s CPU + 3\,s \\
-ColQwen2 over page images & \textbf{0.568} & \textbf{0.849} & \textbf{0.935} & -- & 5.3\,s GPU (L40S) \\
+PyMuPDF passages + MiniLM (submitted) & 0.713 & 0.911 & 3\,s CPU \\
+Docling items + MiniLM & -- & 0.923 & 45\,s CPU + 3\,s \\
+ColQwen2 over page images & \textbf{0.935} & -- & 5.3\,s GPU (L40S) \\
 \bottomrule
 \end{tabular}
-\caption{\textbf{Visual page retrieval finds the evidence page far more often.} Hit@$k$: a gold page in
-the top $k$ (MiniLM scores a page by its best passage); Recall@16: the annotated passage in the top 16
+\caption{\textbf{Visual page retrieval finds the evidence page far more often.} Hit@5: a gold page in the top 5
+(Hit@1: 0.568 against 0.317; MiniLM scores a page by its best passage); Recall@16: the annotated passage in the top 16
 chunks. ColQwen2~\cite{faysse2024colpali} (\texttt{vidore/colqwen2-v1.0}, 110\,dpi), Docling~\cite{auer2024docling}
 2.135 without OCR; one run each. It needs a GPU at query time, so it is future work.
 Files: \texttt{runs/visual-bench-dev.json}, \texttt{runs/docling-bench-dev.json}.}
