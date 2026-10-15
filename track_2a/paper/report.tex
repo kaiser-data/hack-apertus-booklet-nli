@@ -163,15 +163,16 @@ Embedders compared & multilingual-e5-large~\cite{wang2024e5}, Qwen3-Embedding-0.
 \toprule
 Split & Model & Task A F1 & Task B F1 & Evid.\ (A) & In tokens A / B & Out A \\
 \midrule
-Test, 976 (own scorer) & 8B & 0.891 {\scriptsize(0.869--0.913)$^\ddagger$} & -- & 0.716$^\dagger$ & 3{,}424 / -- & 86 \\
+Test, 976 (own scorer) & 8B & 0.891 {\scriptsize(0.869--0.913)$^\ddagger$} & n/a$^\S$ & 0.716$^\dagger$ & 3{,}424 / n/a & 86 \\
 Dev, 150/task (official) & 8B & 0.857 & 0.930 & 0.768 & 3{,}349 / 2{,}286 & 86 \\
 Dev, 150/task (official) & 70B, mean of 4 runs & 0.918 & 0.977 & 0.816 & 3{,}349 / 2{,}286 & 92 \\
-\textbf{Test, 976/task (official)} & \textbf{70B} & \textbf{0.930} {\scriptsize(0.909--0.950)$^\ddagger$} & \textbf{0.970} & \textbf{0.844} & 3{,}446 / 2{,}013 & 94 \\
+Test, 976/task (official) & 8B & 0.884 {\scriptsize(0.864--0.905)$^\ddagger$} & \textbf{0.979} & 0.799 & 3{,}446 / 2{,}013 & 85 \\
+\textbf{Test, 976/task (official)} & \textbf{70B} & \textbf{0.930} {\scriptsize(0.909--0.950)$^\ddagger$} & 0.970 & \textbf{0.844} & 3{,}446 / 2{,}013 & 94 \\
 \bottomrule
 \end{tabular}
 \caption{\textbf{Main results.} ``Official'': the organisers' scorer on cases in their format, run in
 our Docker image. $^\dagger$Test evidence uses our own n-gram overlap measure. $^\ddagger$Bootstrap over the 14 vote
-dates (8B claim-level: 0.871--0.909). A near-repeat of the 8B dev run (larger output cap) moved F1 by 0.027. Files: \texttt{runs/test-rag-k16-n976/}, \texttt{runs/contract-dev-n150/}.}
+dates (8B claim-level: 0.871--0.909). $^\S$That run covered booklet claims only. A near-repeat of the 8B dev run (larger output cap) moved F1 by 0.027. Files: \texttt{runs/test-rag-k16-n976/}, \texttt{runs/contract-dev-n150/}.}
 \label{tab:main}
 \end{table}
 
@@ -238,11 +239,12 @@ controlled: the sentence configuration comes from a separate inference run (two 
 and also adds sentences from uncited context.
 \textbf{Model size.} With identical prompts, retrieval and input tokens (output 92 against 86), the 70B
 gains 6 points on the booklet task on dev (mean 0.918 over four runs, range 0.905--0.932) and holds on
-the held-out test split: 0.930 against 0.891 for the 8B, with evidence Hit@5 0.844 (Table~\ref{tab:main}).
-\textbf{Embedder cost.} Larger embedders retrieve better (recall@16 0.965 and 0.970 against 0.911) but
-need 83 and 192\,s of CPU per booklet against 3\,s; BM25 fusion did not help at $k=16$
-(Fig.~\ref{fig:evid}b). In a task-A-only container the submitted image spends 0.22\,s of non-LLM time
-per case. \textbf{Inference cost.} One Apertus call per claim; end-to-end median 3.9\,s (8B) and
+the held-out test split: 0.930 against 0.884 for the 8B in the same format, with evidence Hit@5 0.844
+against 0.799. Given the passage (task B), both are near the ceiling on test (8B 0.979, 70B 0.970), so the
+dev advantage there does not carry over (Table~\ref{tab:main}).
+\textbf{Embedder cost.} Larger embedders retrieve better but cost 25--60$\times$ the CPU time
+(Fig.~\ref{fig:evid}b); the submitted image spends 0.22\,s of non-LLM time per case.
+\textbf{Inference cost.} One Apertus call per claim; end-to-end median 3.9\,s (8B) and
 4.9\,s (70B) per booklet claim. At Modal list prices and our measured throughput (warm server, 6 parallel
 requests) the GPU costs about \$0.46 per 1{,}000 claims for the 8B (one L40S) and \$3.75--6.48 for the
 70B (two H200).
@@ -250,12 +252,10 @@ requests) the GPU costs about \$0.46 per 1{,}000 claims for the 8B (one L40S) an
 \section{Discussion}\label{sec:learned}
 \textbf{What we learned.} The scorer, not intuition, decides what good evidence is: our first
 instinct, and that of another AI we asked, was to cite whole pages, and measuring showed the opposite.
-\textbf{Hackathon scoring versus real use.} The scorer charges the LLM only for tokens (equal for 8B
-and 70B), not for waiting time, but charges CPU time; hence the 70B and the small embedder. A real
-service would differ: users wait for each answer and every 70B query costs GPU time (the 8B answers in
-a median 4.5\,s at 0.891 on test), while booklets could be embedded once ahead of time, which removes
-most of the cost of stronger embedders. Retrieving instead of reading everything holds in both settings;
-the evidence result is specific to the reference-matching metric.
+\textbf{Hackathon scoring versus real use.} The scorer charges LLM tokens but not LLM waiting time,
+and it charges CPU time; hence the 70B and the small embedder. A real service would weigh differently:
+users wait for each answer and the 70B costs more GPU time, while booklets could be embedded once in
+advance, making stronger embedders cheap.
 \textbf{Limitations.} Reruns vary by up to 0.027 macro-F1; choices rest on 6 dev vote dates; Hit@5 is a proxy and two of five quotes come from uncited context; retrieval can
 pick the wrong vote in a multi-vote booklet; PyMuPDF reads tables as lines.
 
@@ -282,8 +282,8 @@ same-language 0.875); actor-mentioning contradictions fail more often across lan
 against 2 of 41), and a prompt glossary of actor names did not fix it.
 \textbf{RQ2, context.} Reading the 16 retrieved passages instead of the whole booklet is both more
 accurate (0.861 against 0.735 on the same 60 claims) and uses 89\% fewer input tokens (3{,}446 against 31{,}402
-input tokens). On the 976 held-out claims the 8B reaches macro-F1 0.891 and the 70B 0.930, at identical input
-tokens. Only 26 of the 106 test errors are retrieval misses; the rest are decisions on retrieved text,
+input tokens). On the 976 held-out claims, the 70B reaches macro-F1 0.930 against 0.884 for the 8B in the
+official format, at identical input tokens. Only 26 of the 106 test errors are retrieval misses; the rest are decisions on retrieved text,
 which we think fine-tuning can address.
 \textbf{RQ3, evidence.} Under the organisers' matcher, single verbatim sentences match the annotated
 evidence best (0.758, against 0.616 for passages and 0.535 for whole pages).
@@ -324,8 +324,8 @@ decorrenza infruttuosa del termine di referendum \ldots'' &
 8B: supports (wrong); \textbf{70B: contradicts} in both runs: a legal qualification \\
 \bottomrule
 \end{tabular}
-\caption{\textbf{A changed number, a wrong actor and a legal qualification}, each across languages.
-Test claims \#1159 and \#1277; dev case \texttt{v1.1-row-1174-A}. Quotes verbatim, shortened with ``\ldots''.}
+\caption{\textbf{A changed number, a wrong actor and a legal qualification}, each across languages
+(test claims \#1159, \#1277; dev case \texttt{v1.1-row-1174-A}; quotes verbatim, shortened).}
 \label{tab:cases}
 \end{table}
 
@@ -337,15 +337,15 @@ Test claims \#1159 and \#1277; dev case \texttt{v1.1-row-1174-A}. Quotes verbati
 Method (338 dev claims, 18 booklets) & Page Hit@5 & Passage recall@16 & Cost per booklet \\
 \midrule
 PyMuPDF passages + MiniLM (submitted) & 0.713 & 0.911 & 3\,s CPU \\
-Docling items + MiniLM & -- & 0.923 & 45\,s CPU + 3\,s \\
-ColQwen2 over page images & \textbf{0.935} & -- & 5.3\,s GPU (L40S) \\
+Docling items + MiniLM & 0.802 & 0.923 & 45\,s CPU + 3\,s \\
+ColQwen2 over page images & \textbf{0.935} & n/a & 5.3\,s GPU (L40S) \\
 \bottomrule
 \end{tabular}
-\caption{\textbf{Visual page retrieval finds the evidence page far more often.} Hit@5: a gold page in the top 5
-(Hit@1: 0.568 against 0.317; MiniLM scores a page by its best passage); Recall@16: the annotated passage in the top 16
-chunks. ColQwen2~\cite{faysse2024colpali} (\texttt{vidore/colqwen2-v1.0}, 110\,dpi), Docling~\cite{auer2024docling}
-2.135 without OCR; one run each. It needs a GPU at query time, so it is future work.
-Files: \texttt{runs/visual-bench-dev.json}, \texttt{runs/docling-bench-dev.json}.}
+\caption{\textbf{Visual page retrieval finds the evidence page far more often.} Hit@5: a gold page in
+the top 5 (Hit@1: 0.568, 0.382, 0.317; text methods score a page by its best chunk); recall@16: n/a for
+ColQwen2, which ranks pages. ColQwen2~\cite{faysse2024colpali} (\texttt{vidore/colqwen2-v1.0}), Docling~\cite{auer2024docling}
+2.135; one run each; needs a GPU at query time. Files: \texttt{runs/visual-bench-dev.json},
+\texttt{runs/docling-bench-dev.json}.}
 \label{tab:visual}
 \end{table}
 

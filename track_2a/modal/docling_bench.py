@@ -34,6 +34,9 @@ KS = (8, 16)
 MAX_CHARS = 900
 
 
+PAGE_KS = (1, 3, 5)
+
+
 def _path():
     import sys
 
@@ -144,6 +147,8 @@ def score(converted: list[dict]) -> dict:
            "init_s_mean": round(sum(c["init_s"] for c in converted) / len(conv), 1),
            "hybrid_errors": [c["hybrid_error"] for c in converted if c["hybrid_error"]],
            "methods": {}}
+    gold_pages = {r["id"]: {c["page"] for c in pym[r["booklet_url"]]
+                            if overlaps_reference(c["text"], r["reference_string"])} for r in rows}
     for name, books in (("pymupdf", pym), ("docling_items", {u: c["items"] for u, c in conv.items()}),
                         ("docling_hybrid", {u: c["hybrid"] for u, c in conv.items()})):
         if not all(books.values()):
@@ -153,21 +158,33 @@ def score(converted: list[dict]) -> dict:
                 for u, cs in books.items()}
         embed_s = time.perf_counter() - t
         hits = dict.fromkeys(KS, 0)
+        page_hits = dict.fromkeys(PAGE_KS, 0)
         findable = 0  # claims where some chunk at all overlaps the reference (ceiling)
         for r in rows:
             cs = books[r["booklet_url"]]
             ok = [overlaps_reference(c["text"], r["reference_string"]) for c in cs]
             findable += any(ok)
-            order = (mats[r["booklet_url"]] @ retrieve._embed(EMBEDDER, [r["claim"]], "query")[0]
-                     ).argsort()[::-1]
+            scores = mats[r["booklet_url"]] @ retrieve._embed(EMBEDDER, [r["claim"]], "query")[0]
+            order = scores.argsort()[::-1]
             for k in KS:
                 hits[k] += any(ok[i] for i in order[:k])
+            # page level, comparable to visual_bench.py: gold pages from the PyMuPDF passages,
+            # each page scored by its best chunk
+            gold = gold_pages[r["id"]]
+            best: dict = {}
+            for c, sc in zip(cs, scores):
+                if c["page"] is not None:
+                    best[c["page"]] = max(best.get(c["page"], -9.0), float(sc))
+            ranked = sorted(best, key=lambda pg: -best[pg])
+            for k in PAGE_KS:
+                page_hits[k] += bool(gold & set(ranked[:k]))
         n_chunks = sum(len(c) for c in books.values())
         out["methods"][name] = {
             "chunks": n_chunks,
             "mean_chars": round(sum(len(c["text"]) for cs in books.values() for c in cs) / n_chunks),
             "any_chunk_overlaps": round(findable / len(rows), 4),
             **{f"recall@{k}": round(v / len(rows), 4) for k, v in hits.items()},
+            **{f"page_hit@{k}": round(v / len(rows), 4) for k, v in page_hits.items()},
             "embed_s_per_booklet": round(embed_s / len(books), 1)}
     volume.commit()
     return out

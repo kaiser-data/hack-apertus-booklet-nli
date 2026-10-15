@@ -1,0 +1,116 @@
+✓ Initialized. View run at 
+https://modal.com/apps/kaiser-data/main/ap-hPCD0hZqIDJjNui3Cddfux
+✓ Created objects.
+├── ✓ Uploaded 
+│   /Users/marty/claude-projects/hackathon/hack-apertus/track_2a/modal/check_ima
+│   ge.py
+├── ✓ Uploaded /Users/marty/claude-projects/hackathon/hack-apertus/track_2a
+├── ✓ Created Function online.
+└── ✓ Created Function offline.
+== online: 1952/1952 predictions
+1952 cases, model swiss-ai/Apertus-v1.5-8B
+  20/1952
+  40/1952
+  60/1952
+  80/1952
+  100/1952
+  120/1952
+  140/1952
+  160/1952
+  180/1952
+  200/1952
+  220/1952
+  240/1952
+  260/1952
+  280/1952
+  300/1952
+  320/1952
+  340/1952
+  360/1952
+  380/1952
+  400/1952
+  420/1952
+  440/1952
+  460/1952
+  480/1952
+  500/1952
+  520/1952
+  540/1952
+  560/1952
+  580/1952
+  600/1952
+  620/1952
+  640/1952
+  660/1952
+  680/1952
+  700/1952
+  720/1952
+  740/1952
+  760/1952
+  780/1952
+  800/1952
+  820/1952
+  840/1952
+  860/1952
+  880/1952
+  900/1952
+  920/1952
+  940/1952
+  960/1952
+  980/1952
+  1000/1952
+  1020/1952
+  1040/1952
+  1060/1952
+  1080/1952
+  1100/1952
+  1120/1952
+  1140/1952
+  1160/1952
+  1180/1952
+  1200/1952
+  1220/1952
+  1240/1952
+  1260/1952
+  1280/1952
+  1300/1952
+  1320/1952
+  1340/1952
+  1360/1952
+  1380/1952
+  1400/1952
+  1420/1952
+  1440/1952
+  1460/1952
+  1480/1952
+  1500/1952
+  1520/1952
+  1540/1952
+  1560/1952
+  1580/1952
+  1600/1952
+  1620/1952
+  1640/1952
+  1660/1952
+  1680/1952
+  1700/1952
+  1720/1952
+  1740/1952
+  1760/1952
+  1780/1952
+  1800/1952
+  1820/1952
+  1840/1952
+  1860/1952
+  1880/1952
+  1900/1952
+  1920/1952
+  1940/1952
+wrote 1952 predictions to /output/predictions.jsonl; 761.0 s wall, of which ~0.6 s with no LLM request in flight (approximate) (0 ms per case)
+  v1.1-row-0-B entailment [None] {'input_tokens': 1164, 'output_tokens': 41, 'inference_time_ms': 25592}
+  v1.1-row-4-B entailment [None] {'input_tokens': 1054, 'output_tokens': 64, 'inference_time_ms': 26134}
+  v1.1-row-7-B entailment [None] {'input_tokens': 2094, 'output_tokens': 62, 'inference_time_ms': 26064}
+  v1.1-row-6-B entailment [None] {'input_tokens': 1704, 'output_tokens': 74, 'inference_time_ms': 26524}
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/kaiser-data/main/ap-hPCD0hZqIDJjNui3Cddfux

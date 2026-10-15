@@ -23,13 +23,15 @@ and it is not voting advice.
 
 | Setting | Model | Booklet + claim (macro-F1) | Given passage + claim | Evidence Hit@5 | Input tokens / claim |
 |---|---|---|---|---|---|
-| Held-out test, 976 claims, 14 unseen vote dates | 8B | **0.891** (95% CI 0.869–0.913) | – | – | 3,424 |
-| Same 60 test claims, **whole booklet** in the prompt | 8B | 0.735 | – | – | 31,402 |
+| Held-out test, 976 claims, 14 unseen vote dates (booklet claims, own scorer) | 8B | 0.891 (95% CI 0.869–0.913) | n/a | n/a | 3,424 |
+| Same 60 test claims, **whole booklet** in the prompt | 8B | 0.735 | n/a (task B has no booklet) | 0.548 (own measure) | 31,402 |
 | Dev, 150 claims per task, organisers' scorer | 8B | 0.857 | 0.930 | 0.768 | 3,349 |
 | Dev, 150 claims per task, organisers' scorer, mean of 4 runs | 70B | 0.918 | 0.977 | 0.816 | 3,349 |
+| Held-out test, 976 claims per task, organisers' scorer | 8B | 0.884 (95% CI 0.864–0.905) | **0.979** | 0.799 | 3,446 |
 | **Held-out test, 976 claims per task, organisers' scorer** | **70B** | **0.930** (95% CI 0.909–0.950) | **0.970** | **0.844** | 3,446 |
 
-The submitted image uses the 70B. Reading 16 retrieved passages instead of the whole booklet is more
+The submitted image uses the 70B: it wins on the booklet task and on evidence, while with a given
+passage both models are near the ceiling. Reading 16 retrieved passages instead of the whole booklet is more
 accurate at a ninth of the tokens. Intervals are bootstrapped over the 14 test vote dates. Where the
 model still fails, and what we tried against it, is in the report.
 
@@ -39,7 +41,7 @@ model still fails, and what we tried against it, is in the report.
 |---|---|---|
 | LLM input tokens (booklet / given passage) | 3,349 / 2,286 | 3,349 / 2,286 |
 | LLM output tokens (booklet / given passage) | 86 / 75 | 91 / 76 |
-| Whole booklet in the prompt instead (baseline) | 31,402 input tokens | – |
+| Whole booklet in the prompt instead (baseline) | 31,402 input tokens | not run (booklets exceed our 32k-token 70B context) |
 | End-to-end time in the image, median (booklet / given passage) | 3.9 s / 2.9 s | 4.9 s / 2.9 s |
 | Processing outside the LLM (parsing, search, quotes) | 0.22 s | 0.22 s |
 | GPU used | 1× NVIDIA L40S | 2× NVIDIA H200 |
