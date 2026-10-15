@@ -246,12 +246,8 @@ requests) the GPU costs about \$0.46 per 1{,}000 claims for the 8B (one L40S) an
 70B (two H200).
 
 \section{Discussion}\label{sec:learned}
-\textbf{What we learned.} On this benchmark Apertus works across the three languages without a
-translation step on average, but cross-lingual actor attribution remains a weak spot (RQ1). The bigger model is better on our dev runs, as expected. Errors remain even when the 8B
-has the annotated text in hand, which we think fine-tuning can address.
-The scorer, not intuition, decides what good evidence is: our first instinct, and that of another AI we
-asked, was to cite whole pages; measuring with the organisers' matcher showed that single sentences
-work best.
+\textbf{What we learned.} The scorer, not intuition, decides what good evidence is: our first
+instinct, and that of another AI we asked, was to cite whole pages, and measuring showed the opposite.
 \textbf{Hackathon scoring versus real use.} The scorer charges the LLM only for tokens (equal for 8B
 and 70B), not for waiting time, but charges CPU time; hence the 70B and the small embedder. A real
 service would differ: users wait for each answer and every 70B query costs GPU time (the 8B answers in
@@ -267,27 +263,33 @@ passages). Retrieval can pick the wrong vote in a multi-vote booklet, and PyMuPD
 \textbf{Ethics.} A verdict states what the booklet says, not whether a claim is true or how to vote;
 it is a model prediction to check against the cited page, not political advice. The benchmark contains no personal data; the live demo processes visitor IP
 addresses only to enforce daily rate limits and does not store claims.
-\textbf{Use of AI.} Apertus-v1.5 predicts labels and cites passages; MiniLM ranks passages and
-quotations. Development used Claude Code (Anthropic, Claude Opus 5.5), which implemented the author's
-ideas in code, ran the experiments on Modal and drafted documentation under the author's direction;
-read-only reviews came from Codex CLI (OpenAI, five), Grok (xAI, two) and one further AI review. Every
-finding was checked against the code; scores, token counts and figures are recomputed from \texttt{runs/}.
+\textbf{Use of AI.} Apertus decides and MiniLM retrieves. Development used Claude Code (Claude Opus
+5.5) for implementation and experiments under the author's direction, plus read-only reviews by Codex
+and Grok; every finding was checked against the code and every number against \texttt{runs/}.
 \textbf{Reproducibility.} Code, run files and all predictions are in the repository (Apache-2.0);
 dataset revision \texttt{fc2b276}; temperature 0, seed 0. Every experiment, including rejected ones
 (prompt changes, parser v4, vote routing, a $k$\,=\,8$\rightarrow$16 cascade), is documented in the
 archival \texttt{technical\_report.md}.
 
 \section{Conclusion and future work}\label{sec:future}
-Apertus checks claims against the official booklet across German, French and Italian, at a ninth of
-the whole-booklet tokens, and shows the page that settles them. Next: test many more claims and all
-language combinations; fine-tune by distilling the 70B into the 8B (teacher--student) or with a LoRA
-adapter, on booklets outside the benchmark and split by vote date; add an actor-aware verification step (a
-prompt glossary alone did not help), tested on minimal pairs that change only the speaker or a number; and move retrieval to page images: in a first test, ColQwen2 page retrieval finds the
-gold page in the top~5 for 93.5\% of dev claims against 71.3\% for our text pipeline
-(Appendix~\ref{app:visual}). Beyond the benchmark, the same
-approach can serve the many voters who never read the booklet, answering ``what does this proposal
-actually say about X?'' with the cited page, ground opinion surveys and political barometers in the
-official text, and extend to cantonal and communal votes and to other countries, for example Germany.
+\textbf{RQ1, languages.} Apertus handles all nine claim/booklet language pairs without a translation
+step: cross-lingual pairs score 0.899 against 0.875 for same-language ones. The weak spot is who holds
+a position: actor-mentioning contradictions fail 14 of 107 times across languages against 2 of 41
+within one language, and a prompt glossary of actor names did not fix it.
+\textbf{RQ2, context.} Reading the 16 retrieved passages instead of the whole booklet is both more
+accurate (0.861 against 0.735 on the same 60 claims) and nine times cheaper (3{,}446 against 31{,}402
+input tokens). The 8B reaches macro-F1 0.891 on 976 held-out claims, and the 70B adds 5--7 points on
+dev at identical input tokens. Only 26 of the 106 test errors are retrieval misses; the rest are decisions on retrieved text,
+which we think fine-tuning can address.
+\textbf{RQ3, evidence.} Under the organisers' matcher, single verbatim sentences match the annotated
+evidence best (0.758, against 0.616 for passages and 0.535 for whole pages).
+Overall, the system meets the evaluation contract, uses one Apertus call per claim at about \$0.46
+(8B) to \$6.48 (70B) of GPU time per 1{,}000 claims, and cites the page that settles each verdict.
+
+\textbf{Future work.} Actor-aware verification tested on minimal pairs; distilling the 70B into the 8B
+on more vote dates; visual page retrieval (ColQwen2 finds the gold page in the top 5 for 93.5\% of
+claims against 71.3\%, Appendix~\ref{app:visual}); and serving voters who never read the booklet,
+opinion surveys and political barometers, cantonal votes and other countries.
 
 \medskip\noindent\emph{A voter can only decide well if a claim can be traced to the page that settles
 it; Apertus does that across German, French and Italian.}
