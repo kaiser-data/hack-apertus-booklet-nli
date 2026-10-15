@@ -8,6 +8,7 @@
 
 import json
 import random
+from itertools import pairwise
 from pathlib import Path
 
 import matplotlib
@@ -103,7 +104,7 @@ def draw_pdf() -> None:
             ax.text(x + w - 8, y + 8, tag, ha="right", va="top", fontsize=4.8, color=MUTED,
                     family="DejaVu Sans")
     for pts in ARROWS:
-        for (x1, y1), (x2, y2) in zip(pts[:-2], pts[1:-1]):
+        for (x1, y1), (x2, y2) in pairwise(pts[:-1]):  # the last segment gets the arrowhead
             ax.plot([x1, x2], [y1, y2], color=INK, linewidth=0.8, solid_capstyle="butt")
         ax.add_patch(FancyArrowPatch(pts[-2], pts[-1], arrowstyle="-|>", mutation_scale=7,
                                      linewidth=0.8, color=INK, shrinkA=0, shrinkB=0))
