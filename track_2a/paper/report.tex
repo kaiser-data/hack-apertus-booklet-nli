@@ -25,8 +25,8 @@
   \large Multilingual document-grounded NLI with Apertus\,v1.5 --- Hack Apertus 2026, Track 2A (OST)}
 \author{Martin Kaiser (team \texttt{kaiser-data}) \quad
   \href{https://github.com/kaiser-data/hack-apertus-booklet-nli}{github.com/kaiser-data/hack-apertus-booklet-nli}\\
-  \small Image \texttt{ghcr.io/kaiser-data/hack-apertus-booklet-nli:latest} \quad
-  Live demo \href{https://booklet-nli.pages.dev/demo/}{booklet-nli.pages.dev/demo}}
+  \small Code, demo, run files and all predictions in the repository; image
+  \texttt{ghcr.io/kaiser-data/hack-apertus-booklet-nli:latest}}
 \date{\vspace{-0.8cm}}
 
 \begin{document}
@@ -42,9 +42,8 @@ claims, Apertus-v1.5-8B reaches macro-F1 \textbf{0.891} (95\% CI 0.871--0.909) w
 prompt tokens per claim; on a paired 60-claim subsample it scores 0.861 against 0.735 for reading the
 whole booklet at 31{,}400 tokens. Under the organisers' scorer on 150 dev claims per task, the same pipeline with
 Apertus-v1.5-70B reaches \textbf{0.905--0.925} with booklets and \textbf{0.979--0.986} with given
-passages (two development runs). The system runs as a public live demo
-(\href{https://booklet-nli.pages.dev/demo/}{booklet-nli.pages.dev/demo}) next to an explorer of all 976
-test answers. Of three evidence configurations, sentence quotes match the
+passages (two development runs). The repository includes a demo, hosted
+publicly during the hackathon, and an explorer of all 976 test answers. Of three evidence configurations, sentence quotes match the
 annotated passages best (0.758, against 0.535 for whole pages).
 \end{abstract}
 
@@ -67,9 +66,8 @@ research questions:
 model, packaged for the organisers' evaluation contract. (2) A leakage-free split of the OST benchmark
 by vote date, with a single held-out test run. (3) Controlled comparisons of context size, evidence
 granularity, model size (8B vs 70B) and embedder cost, scored with the organisers' own scorer.
-(4) A public live demo and an explorer of all 976 test
-answers with their cited pages (\href{https://booklet-nli.pages.dev}{booklet-nli.pages.dev},
-Fig.~\ref{fig:demo}). (5) All predictions, run files and figures published for re-analysis.
+(4) A demo and an explorer of all 976 test answers with their
+cited pages (Fig.~\ref{fig:demo}; code in \texttt{modal/demo.py}, explorer \texttt{docs/results.html}). (5) All predictions, run files and figures published for re-analysis.
 
 \begin{figure}[h]
 \centering
@@ -77,11 +75,12 @@ Fig.~\ref{fig:demo}). (5) All predictions, run files and figures published for r
 \includegraphics[width=\linewidth]{fig-demo.png}
 \end{minipage}\hfill
 \begin{minipage}[c]{0.47\linewidth}
-\caption{\textbf{The live demo} (\href{https://booklet-nli.pages.dev/demo/}{booklet-nli.pages.dev/demo}):
-a French claim against the German booklet of 9 June 2024. Apertus answers that the booklet
-\emph{supports} it and cites page 42, which can be checked in the official PDF. Anyone can pick a
-booklet, type a claim in German, French or Italian and get a verdict in about 5\,s; the companion site
-lists all 976 recorded test answers.}
+\caption{\textbf{The demo} (\texttt{modal/demo.py}; hosted at
+\href{https://booklet-nli.pages.dev/demo/}{booklet-nli.pages.dev/demo} during the hackathon): a French
+claim against the German booklet of 9 June 2024. Apertus answers that the booklet
+\emph{supports} it and cites page 42, which can be checked in the official PDF. A user picks a booklet,
+types a claim in German, French or Italian and gets a verdict in about 5\,s; the explorer
+(\texttt{docs/results.html}, works offline) lists all 976 recorded test answers.}
 \label{fig:demo}
 \end{minipage}
 \end{figure}

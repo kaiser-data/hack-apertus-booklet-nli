@@ -18,8 +18,10 @@ model prediction, not political advice: check the cited passages.
 
 ## Live
 
-[booklet-nli.pages.dev/demo](https://booklet-nli.pages.dev/demo/) (type a claim) ·
-[booklet-nli.pages.dev](https://booklet-nli.pages.dev/) (all 976 test answers, charts)
+Hosted during the hackathon: [booklet-nli.pages.dev/demo](https://booklet-nli.pages.dev/demo/)
+(type a claim) · [booklet-nli.pages.dev](https://booklet-nli.pages.dev/) (all 976 test answers,
+charts). Both live in this repository: `docs/results.html` (open locally) and `modal/demo.py`
+(`modal deploy modal/demo.py`, with `cloudflare/` for the static front end).
 
 <a href="https://booklet-nli.pages.dev/"><img src="docs/img/explorer-overview.png" width="70%"
    alt="Results page: macro-F1 0.891 on the held-out test, 9x fewer tokens than the whole booklet, 4.5 s median response, and how the pipeline works"></a>

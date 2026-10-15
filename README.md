@@ -1,116 +1,122 @@
-# Büchli — checking campaign claims against the Swiss voting booklet with Apertus
+# Büchli
 
-**Hack Apertus · Track 2A submission.** Give it an official federal voting booklet (German, French
-or Italian) and a claim in any of the three languages. Apertus-v1.5-8B says whether the booklet
-**supports**, **contradicts** or **doesn't settle** the claim, and cites the pages it relied on.
+**Checking campaign claims against the official Swiss voting booklet, in German, French and Italian, with Apertus.**
 
-## Try it live
+[![image](https://github.com/kaiser-data/hack-apertus-booklet-nli/actions/workflows/image.yml/badge.svg)](https://github.com/kaiser-data/hack-apertus-booklet-nli/actions/workflows/image.yml)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![model](https://img.shields.io/badge/model-Apertus--v1.5%208B%20%7C%2070B-orange)](https://huggingface.co/swiss-ai/Apertus-v1.5-70B)
+[![Hack Apertus](https://img.shields.io/badge/Hack%20Apertus%202026-Track%202A%20·%20OST-red)](https://hackapertus.ch)
 
-**[booklet-nli.pages.dev/demo](https://booklet-nli.pages.dev/demo/)**: pick a booklet, type a claim in
-German, French or Italian, and get Apertus's verdict with the cited pages. The GPU sleeps when idle,
-so the first claim after a pause waits about 5 minutes. **[booklet-nli.pages.dev](https://booklet-nli.pages.dev/)**
-shows all 976 recorded test answers.
+Before every federal vote, each Swiss household receives the *Abstimmungsbüchli*, the Federal
+Council's official explanations. During the campaign, voters meet claims that may or may not match
+it, often in another language than the booklet they read. Büchli takes a booklet and a claim and
+answers whether the booklet **supports**, **contradicts** or **doesn't settle** the claim, quoting
+the sentences and pages it relied on. It judges what the booklet says, not whether a claim is true,
+and it is not voting advice.
 
 <p align="center">
-  <a href="https://booklet-nli.pages.dev/demo/"><img src="track_2a/docs/img/demo.png" width="49%"
-     alt="Live demo: a French claim checked against the German booklet of 9 June 2024; Apertus answers that the booklet supports it and cites pages 42 and 49"></a>
-  <a href="https://booklet-nli.pages.dev/"><img src="track_2a/docs/img/explorer-claims.png" width="49%"
-     alt="Results explorer: one of the 976 test claims, French claim against a German booklet, with Apertus's verdict, its reason and the cited page"></a>
+  <img src="track_2a/docs/img/pipeline.png" width="92%"
+       alt="Pipeline: booklet PDF and claim are split into passages (PyMuPDF), the 16 closest passages are found across languages (MiniLM), Apertus reads only those and returns the verdict with five verbatim sentences and their pages">
 </p>
 
-*Left: the live demo, a French claim against the German booklet of 9 June 2024. Right: the
-explorer, one of the 976 held-out test answers with its reason and cited page.*
+## Results
 
-## Results and submission
+| Setting | Model | Booklet + claim (macro-F1) | Given passage + claim | Evidence Hit@5 | Input tokens / claim |
+|---|---|---|---|---|---|
+| Held-out test, 976 claims, 14 unseen vote dates | 8B | **0.891** (95% CI 0.869–0.913) | – | – | 3,424 |
+| Same 60 test claims, **whole booklet** in the prompt | 8B | 0.735 | – | – | 31,402 |
+| Dev, 150 claims per task, organisers' scorer | 8B | 0.857 | 0.930 | 0.768 | 3,349 |
+| Dev, 150 claims per task, organisers' scorer | **70B** | **0.905–0.925** | **0.979–0.986** | **0.808** | 3,349 |
 
-- **Held-out test (976 claims, 14 unseen vote dates), Apertus-v1.5-8B: macro-F1 0.891** (95% CI 0.871–0.909),
-  about 3,400 prompt tokens per claim, 9× fewer than reading the whole booklet.
-- **Container image (amd64, public):** `ghcr.io/kaiser-data/hack-apertus-booklet-nli:latest`, built
-  from `track_2a/Dockerfile` by [CI](.github/workflows/image.yml), which also runs the contract
-  offline before every push. `docker run --platform linux/amd64 -e BASE_URL -e API_KEY -v
-  <cases>:/data:ro -v <out>:/output ghcr.io/kaiser-data/hack-apertus-booklet-nli:latest --input
-  /data/cases.jsonl --output /output/predictions.jsonl`
-- **Official evaluation contract:** the Docker image takes `--input /data/cases.jsonl --output
-  /output/predictions.jsonl` (tasks A and B, `BASE_URL`/`API_KEY`, amd64, CPU, offline). On 150 dev
-  claims per task with the organisers' `evaluate.py`, submitted image (Apertus-v1.5-70B, two
-  runs): task A 0.905–0.925, task B 0.979–0.986, evidence score 0.81 (with the 8B: 0.857 / 0.930 / 0.77).
-  How to run it: [`track_2a/README.md`](track_2a/README.md#official-evaluation-contract-what-the-organisers-run).
-- **Live:** [booklet-nli.pages.dev](https://booklet-nli.pages.dev/) (every test answer) ·
-  [try a claim](https://booklet-nli.pages.dev/demo/) (Apertus on a GPU that sleeps when idle; the
-  first claim after a pause waits about 5 minutes for it to start).
-- **Explore every test answer:** [`track_2a/docs/results.html`](track_2a/docs/results.html) —
-  search and filter all 976 claims, read the booklet passage behind each one, click the confusion matrix.
-- **Write-up:** [`track_2a/kaiser-data_Report.pdf`](track_2a/kaiser-data_Report.pdf)
-  (LaTeX source [`track_2a/paper/`](track_2a/paper/report.tex); every experiment in the archival
-  [`technical_report.md`](track_2a/technical_report.md)) · **Code and how to run it:** [`track_2a/README.md`](track_2a/README.md)
+Reading 16 retrieved passages instead of the whole booklet is more accurate at a ninth of the
+tokens. The 70B rows are two development runs. Where the model still fails, and what we tried
+against it, is in the report.
+
+## See it
+
+<p align="center">
+  <img src="track_2a/docs/img/demo.png" width="49%"
+       alt="Demo: a French claim checked against the German booklet of 9 June 2024; the booklet supports it, with cited pages 42 and 49">
+  <img src="track_2a/docs/img/explorer-claims.png" width="49%"
+       alt="Explorer: one of the 976 test claims with Apertus's verdict, its reason and the cited page">
+</p>
+
+*Left: the demo, a French claim against the German booklet of 9 June 2024. Right: the explorer, one
+of the 976 held-out test answers.* During the hackathon both are hosted at
+[booklet-nli.pages.dev/demo](https://booklet-nli.pages.dev/demo/) and
+[booklet-nli.pages.dev](https://booklet-nli.pages.dev/); the GPU sleeps when idle, so a first claim
+can wait a few minutes. Both are in this repository and run without the hosted site: the explorer is
+a single file ([`track_2a/docs/results.html`](track_2a/docs/results.html)), the demo is
+[`track_2a/modal/demo.py`](track_2a/modal/demo.py).
+
+## Quick start
+
+The published image follows the Hack Apertus evaluation contract: JSONL in, JSONL out, CPU only, no
+downloads at runtime. Any OpenAI-compatible endpoint serving Apertus v1.5 works.
 
 ```bash
 export BASE_URL=https://api.inference.cscs.ch/v1 API_KEY=...
-make cases      # Docker: the evaluation contract on track_2a/examples/ (forwards to track_2a/)
-make run        # Docker: 60-claim held-out sample of our test split, prints macro-F1
+docker run --rm --platform linux/amd64 -e BASE_URL -e API_KEY \
+  -v "$PWD/track_2a/examples:/data:ro" -v "$PWD/out:/output" \
+  ghcr.io/kaiser-data/hack-apertus-booklet-nli:latest \
+  --input /data/cases.jsonl --output /output/predictions.jsonl
 ```
 
----
-
-*The rest of this file is the Hack Apertus template's description of the repository layout.*
-
-## Hack Apertus template
-
-Template repository for [Hack Apertus](https://hackapertus.ch/) submissions.
-Every project keeps almost the same layout, so organizers and judges find the
-same things in the same place.
-
-## Select your track
-
-This repository holds one example project per track:
-
-- `track_1a/`
-- `track_1b/`
-- `track_2a/`
-- `track_2b/`
-
-Keep the directory for the track you are competing in **exactly as it is** —
-don't rename it or move its files — and delete the other track directories.
-That directory is your project root. Keep the files and directories as shown
-below.
-
-## The structure
-
-| Path | What it is |
-| --- | --- |
-| `README.md` | The challenge description and submission requirements for your track |
-| `technical_report.md` | The deeper write-up: architecture, evaluation, limitations |
-| `Makefile` | `make run` must spin up your project |
-| `src/` | Your code |
-| `data/` | Datasets — `track_1a`, `track_2a` and `track_2b` only; max. 100 MB |
-| `findings/` | Issue files — `track_1a` only |
-| `docs/` | Diagrams, notes, longer write-ups |
-
-## Run it
-
-Judges run `make run` from the root of the project, on a clean checkout:
+Each line of `predictions.jsonl` holds the label (0 entailment, 1 neutral, 2 contradiction), up to five
+verbatim evidence sentences with their PDF page, and the tokens and time used. Without Docker:
 
 ```bash
-make run
+cd track_2a && uv sync
+uv run booklet-nli predict --booklet <booklet.pdf or URL> --claim "Le Conseil fédéral recommande …"
 ```
 
-`make run` is expected to run the project using Docker, since that
-is how the judges will run it.
-- If you used other local open-weight models, include instructions for running the project in your technical report.
-- Use the following environment variables:
+More commands (batch, evaluation, retrieval benchmarks, serving Apertus on Modal) are in
+[`track_2a/README.md`](track_2a/README.md).
+
+## How it works
+
+1. **Split**: PyMuPDF turns the booklet into passages of about 900 characters, each with its page
+   and section.
+2. **Search**: a small multilingual embedder finds the 16 passages closest to the claim, across
+   languages, on the CPU.
+3. **Decide**: Apertus reads only those 16 and returns the label and the passages it relied on, as
+   JSON. The image uses Apertus-v1.5-70B when the endpoint serves it, else the 8B.
+4. **Quote**: up to five verbatim sentences with their page numbers become the evidence.
+
+## Repository
+
+| Path | What it is |
+|---|---|
+| [`track_2a/kaiser-data_Report.pdf`](track_2a/kaiser-data_Report.pdf) | The technical report (6 pages); LaTeX source in [`track_2a/paper/`](track_2a/paper/report.tex) |
+| [`track_2a/technical_report.md`](track_2a/technical_report.md) | Archival long version: every experiment, including the rejected ones |
+| [`track_2a/src/booklet_nli/`](track_2a/src/booklet_nli) | The system; [`cases.py`](track_2a/src/booklet_nli/cases.py) is the Docker entrypoint |
+| [`track_2a/runs/`](track_2a/runs) | Every prediction and score behind the numbers above |
+| [`track_2a/modal/`](track_2a/modal) | Apertus servers (8B, 70B), the demo, and the benchmark runners |
+| [`track_2a/docs/results.html`](track_2a/docs/results.html) | Explorer of all 976 test answers (one self-contained file) |
+| [`.github/workflows/image.yml`](.github/workflows/image.yml) | Builds and publishes the image after an offline contract check |
+
+## Data, models and credits
+
+- Benchmark: [OSTswiss/MNLIoverSwissVotingBooklets](https://huggingface.co/datasets/OSTswiss/MNLIoverSwissVotingBooklets)
+  (MIT), split by vote date into dev (6 dates) and test (14 dates).
+- Booklets: Swiss Federal Chancellery, [bk.admin.ch](https://www.bk.admin.ch/de/sammlung-der-abstimmungsbuechlein-seit-1978).
+- Models: [Apertus-v1.5-8B](https://huggingface.co/swiss-ai/Apertus-v1.5-8B) and
+  [Apertus-v1.5-70B](https://huggingface.co/swiss-ai/Apertus-v1.5-70B) (Swiss AI Initiative) decide;
+  [paraphrase-multilingual-MiniLM-L12-v2](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2)
+  retrieves.
+- Built for [Hack Apertus](https://hackapertus.ch) 2026, Track 2A (challenge by OST), from the
+  [project template](https://github.com/HackApertus/project-template). Development used AI coding and
+  review assistants; the report's "Use of AI" section says which and for what.
+
+```bibtex
+@misc{kaiser2026buechli,
+  author = {Kaiser, Martin},
+  title  = {B\"uchli: checking campaign claims against the official voting booklet with Apertus},
+  year   = {2026},
+  howpublished = {\url{https://github.com/kaiser-data/hack-apertus-booklet-nli}},
+  note   = {Hack Apertus 2026, Track 2A (OST)}
+}
 ```
-LLM_NAME — name and version of the model
-LLM_BASE_URL — endpoint base URL
-LLM_API_KEY — your API key
-```
 
-## Getting started
-
-1. Click **Use this template** to create your own repository.
-2. Delete the other track directories. Don't rename or restructure yours.
-3. Read its `README.md` and fill in `technical_report.md`.
-4. Make `make run` work from the root of the project, on a clean checkout.
-
-## License
-
-All Hack Apertus projects are open-sourced. Please check our Terms & Conditions for specific licensing details (6. What you build is open source): https://hackapertus.ch/terms-and-conditions
+Code under the [Apache-2.0](LICENSE) licence. All Hack Apertus projects are open source
+([terms](https://hackapertus.ch/terms-and-conditions)).
