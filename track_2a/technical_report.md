@@ -254,6 +254,10 @@ scored with the starter's `evaluate.py`; the final row ran the Docker image itse
   flight. Our approximate measurement of that time for the last run: 0.5 s for 300 cases (6
   workers), excluding container start. Task B tokens are mostly the reference text itself (median
   1,275, up to ~8k for the longest references); the system prompt is ~450 tokens.
+- **k = 8 with the 70B, rejected.** Task-A-only container, 150 claims: k = 16 F1 0.925, evidence
+  0.828, 3,349 tokens; k = 8 F1 0.900, evidence 0.677, 1,827 tokens. The token saving pays off only
+  if other teams use more than ~1,500 tokens per case; the evidence loss is certain. The same run
+  measured 0.22 s of non-LLM time per case (33 of 386 s), the honest figure for an A-only container.
 - **A cascade, rejected.** k = 8 first, re-asking with k = 16 only when the answer is neutral,
   simulated on the §5.2 runs: macro-F1 0.877 vs 0.890 for k = 16 alone, saving 2 % of tokens.
 

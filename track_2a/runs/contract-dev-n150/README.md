@@ -11,6 +11,7 @@ scored with `evaluate.py` from https://gitlab.com/ifsoftware/hackapertus-starter
 | `predictions-image-8b-final.jsonl` | after the review fixes (lazy booklet preparation, deduplicated quotes, bounded retries) |
 | `predictions-image-70b.jsonl` | same image, `LLM_NAME=swiss-ai/Apertus-v1.5-70B` (Modal, 2× H200) |
 | `predictions-image-auto.jsonl` | same image, `LLM_NAME` unset against the 70B server: the entrypoint picked the 70B |
+| `predictions-a-only-70b-k16.jsonl`, `-k8.jsonl` | task A only (separate container, as in the official run), 70B, k = 16 vs k = 8 |
 | `fallback-8b-examples.jsonl` | `examples/` against the 8B-only server, `LLM_NAME` unset: fell back to the 8B |
 
 Booklet PDFs are not included; `make_cases.py` downloads them into `booklets/`.

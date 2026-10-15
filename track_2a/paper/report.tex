@@ -161,8 +161,10 @@ Retrieval misses explain only 26 of the 106: in 44 of the 70 claims whose annota
 not retrieved, the verdict was still correct from other passages. Given the annotated passage (task B), the 8B scores 0.930
 against 0.857 with retrieval: most remaining errors happen with the right text in hand.
 \textbf{Efficiency.} Task A uses 3{,}349 input tokens per case (task B 2{,}286, mostly the reference
-itself); the median Apertus response is 4.5\,s (8B, test). With lazy preparation, the
-time with no request in flight was below 1\,s for 300 mixed cases; [A-only measurement pending].
+itself); the median Apertus response is 4.5\,s (8B, test). In a task-A-only container (70B, 150
+cases, 18 booklets), 33 of 386\,s had no request in flight: \textbf{0.22\,s per case}, including all
+parsing and embedding. Halving the context ($k=8$) saves 45\% of tokens but drops evidence from
+0.828 to 0.677 (F1 0.925 $\rightarrow$ 0.900); with other teams' token use unknown we keep $k=16$.
 
 \section{What we learned}
 \begin{human}[Q4--Q8 --- the decisions, told by you]
