@@ -47,3 +47,7 @@ runs/*
 runs/**/*.log
 !runs/contract-dev-n150/
 !runs/embed-bench-dev.json
+!runs/contract-dev-n150/logs/
+!runs/contract-dev-n150/logs/*.log
+!runs/visual-bench-dev.json
+!runs/docling-bench-dev.json

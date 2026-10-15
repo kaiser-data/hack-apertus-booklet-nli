@@ -33,6 +33,18 @@ Answer with JSON only: {"reason": "<one or two sentences>", "evidence": [<passag
 "label": "entailment" | "neutral" | "contradiction"}. Evidence lists the passages your verdict \
 rests on; use [] only for neutral claims with no related passage."""
 
+# Optional (--actor-glossary): the main cross-lingual error was a claim naming "the committee" or
+# the Federal Council in one language while the booklet names the body in another (report §6).
+ACTOR_GLOSSARY = """
+
+Actors are named differently in German, French and Italian; these are the same actor:
+- Federal Council = Bundesrat = Conseil fédéral = Consiglio federale
+- Parliament = Parlament / Bundesversammlung = Parlement / Assemblée fédérale = Parlamento / Assemblea federale
+- initiative committee = Initiativkomitee = comité d'initiative = comitato d'iniziativa
+- referendum committee = Referendumskomitee = comité référendaire = comitato referendario
+A claim about "the committee" (das Komitee, le comité, il comitato) means the committee whose \
+arguments the booklet prints for this vote. Decide who holds a position before deciding the label."""
+
 SCHEMA = {
     "type": "object",
     "properties": {
@@ -109,11 +121,12 @@ def verify(llm: LLM, booklet: str, claim: str, mode: str = "rag", k: int = 16,
     return judge(llm, select_context(claim, passages, mode, k, embedder), claim, vote)
 
 
-def judge(llm: LLM, context: list[Passage], claim: str, vote: str | None = None) -> Verdict:
+def judge(llm: LLM, context: list[Passage], claim: str, vote: str | None = None,
+          glossary: bool = False) -> Verdict:
     """One Apertus call: the claim against the given passages. `vote` names the proposal."""
     about = f"Vote: {vote}\n" if vote else ""
     messages = [
-        {"role": "system", "content": SYSTEM},
+        {"role": "system", "content": SYSTEM + (ACTOR_GLOSSARY if glossary else "")},
         {"role": "user",
          "content": f"Passages:\n\n{format_passages(context)}\n\n{about}Claim: {claim}"},
     ]

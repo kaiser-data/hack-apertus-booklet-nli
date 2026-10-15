@@ -1,4 +1,4 @@
-# Booklet NLI — checking claims against Swiss voting booklets with Apertus
+# Büchli — checking campaign claims against the Swiss voting booklet with Apertus
 
 **Hack Apertus · Track 2A submission.** Give it an official federal voting booklet (German, French
 or Italian) and a claim in any of the three languages. Apertus-v1.5-8B says whether the booklet
@@ -41,7 +41,8 @@ explorer, one of the 976 held-out test answers with its reason and cited page.*
 - **Explore every test answer:** [`track_2a/docs/results.html`](track_2a/docs/results.html) —
   search and filter all 976 claims, read the booklet passage behind each one, click the confusion matrix.
 - **Write-up:** [`track_2a/kaiser-data_Report.pdf`](track_2a/kaiser-data_Report.pdf)
-  ([markdown source](track_2a/technical_report.md)) · **Code and how to run it:** [`track_2a/README.md`](track_2a/README.md)
+  (LaTeX source [`track_2a/paper/`](track_2a/paper/report.tex); every experiment in the archival
+  [`technical_report.md`](track_2a/technical_report.md)) · **Code and how to run it:** [`track_2a/README.md`](track_2a/README.md)
 
 ```bash
 export BASE_URL=https://api.inference.cscs.ch/v1 API_KEY=...

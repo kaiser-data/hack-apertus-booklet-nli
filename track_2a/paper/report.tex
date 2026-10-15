@@ -1,4 +1,4 @@
-% Booklet NLI: technical report, Hack Apertus 2026, Track 2A (OST).
+% Büchli: technical report, Hack Apertus 2026, Track 2A (OST).
 % Build: make -C track_2a report   (Tectonic) -> track_2a/kaiser-data_Report.pdf
 % Figures: uv run --with matplotlib python paper/figures.py (from the committed run files).
 % The archival long version with every experiment is technical_report.md.
@@ -9,118 +9,188 @@
 \usepackage{lmodern}
 \usepackage{microtype}
 \usepackage{booktabs}
+\usepackage{array}
+\usepackage{float}
 \usepackage{graphicx}
 \usepackage{xcolor}
-\usepackage{tcolorbox}
 \usepackage{enumitem}
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage[hidelinks]{hyperref}
 \setlist{nosep,leftmargin=*}
 \setlength{\parskip}{3pt}
 \setlength{\parindent}{0pt}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 
-% Author's own text. Remove this macro's box once the paragraph is final.
-\newtcolorbox{human}[1][]{colback=yellow!12,colframe=orange!70!black,boxrule=0.4pt,
-  left=4pt,right=4pt,top=2pt,bottom=2pt,fontupper=\small,title={\small Author's voice: #1},
-  coltitle=black,colbacktitle=yellow!35,fonttitle=\bfseries}
-
-\title{\vspace{-1.2cm}\textbf{Checking campaign claims against the official voting booklet}\\[2pt]
+\title{\vspace{-1.2cm}\textbf{Büchli: checking campaign claims against the official voting booklet}\\[2pt]
   \large Multilingual document-grounded NLI with Apertus\,v1.5 --- Hack Apertus 2026, Track 2A (OST)}
 \author{Martin Kaiser (team \texttt{kaiser-data}) \quad
   \href{https://github.com/kaiser-data/hack-apertus-booklet-nli}{github.com/kaiser-data/hack-apertus-booklet-nli}\\
   \small Image \texttt{ghcr.io/kaiser-data/hack-apertus-booklet-nli:latest} \quad
-  Demo \href{https://booklet-nli.pages.dev/demo/}{booklet-nli.pages.dev/demo}}
+  Live demo \href{https://booklet-nli.pages.dev/demo/}{booklet-nli.pages.dev/demo}}
 \date{\vspace{-0.8cm}}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-\noindent Given an official Swiss federal voting booklet (German, French or Italian PDF) and a claim
-in any of the three languages, our system decides whether the booklet \emph{supports},
-\emph{contradicts} or \emph{does not settle} the claim, and quotes the sentences it relied on, with
-pages. Apertus is the only model that decides; a small CPU embedder picks the 16 passages it reads.
-On 976 held-out test claims Apertus-v1.5-8B reaches \textbf{macro-F1 0.891} (95\% CI 0.871--0.909)
-with $\sim$3{,}400 prompt tokens per claim; reading the whole booklet instead scores 0.735 at
-31{,}400 tokens on the same 60 claims. Under the organisers' scorer on 150 dev claims per task,
-Apertus-v1.5-70B with the same pipeline and the same tokens reaches \textbf{0.905--0.925} (booklet)
-and \textbf{0.979--0.986} (given passage) over two runs, against 0.857 / 0.930 for the 8B.
-Quoting single sentences instead of whole pages raises the evidence score from 0.535 to 0.758.
+\noindent Swiss voters meet campaign claims in many languages, while the authoritative source is the
+official voting booklet. We present \emph{Büchli}, a system that decides whether a booklet
+(German, French or Italian PDF) \emph{supports}, \emph{contradicts} or \emph{does not settle} a claim
+in any of the three languages, and quotes booklet sentences with their pages. A small CPU embedder
+selects 16 passages and ranks quotations; Apertus\,v1.5 is the only model that decides and cites. On 976 held-out test
+claims, Apertus-v1.5-8B reaches macro-F1 \textbf{0.891} (95\% CI 0.871--0.909) with $\sim$3{,}400
+prompt tokens per claim; on a paired 60-claim subsample it scores 0.861 against 0.735 for reading the
+whole booklet at 31{,}400 tokens. Under the organisers' scorer on 150 dev claims per task, the same pipeline with
+Apertus-v1.5-70B reaches \textbf{0.905--0.925} with booklets and \textbf{0.979--0.986} with given
+passages (two development runs). The system runs as a public live demo
+(\href{https://booklet-nli.pages.dev/demo/}{booklet-nli.pages.dev/demo}) next to an explorer of all 976
+test answers. Of three evidence configurations, sentence quotes match the
+annotated passages best (0.758, against 0.535 for whole pages).
 \end{abstract}
 
-\section{Why this matters}
-\begin{human}[Q1, Q2 --- why this challenge, who uses it, in which moment]
-\emph{Draft, replace with your own words:} Before every federal vote, each Swiss household receives
-the Federal Council's explanations. During the campaign, voters meet claims on posters, in debates
-and in their feeds, often in another language than their booklet. This system lets anyone check a
-claim against what the official booklet actually says, and open the page to verify it.
-\end{human}
+\section{Introduction}
+Swiss voters decide several times a year on complex legal, social and financial proposals, and
+during each campaign they meet claims that may or may not match the official booklet, often in another
+language than the one they read. An informed vote depends on checking such a claim against the
+source, and a language model that misreads it, for example a legal sentence with a qualification or a
+negation, is a real risk for democratic decisions. We call the system \emph{Büchli}, the Swiss name
+for the voting booklet (\emph{Abstimmungsbüchli}) that every household receives. A typical case: a French claim says a tax applies from a turnover of
+500 million euros, while the German booklet says 750 million (p.\,21); Büchli answers
+\emph{contradicts} and quotes that sentence (more cases in Appendix~\ref{app:cases}). We ask three
+research questions:
+\begin{enumerate}[label=\textbf{RQ\arabic*}]
+\item Does Apertus understand a booklet across German, French and Italian, without translation?
+\item How much of the booklet must it read, and does it find the passage that settles the claim?
+\item At what granularity (pages, passages, sentences) should evidence be quoted?
+\end{enumerate}
+\textbf{Contributions.} (1) A retrieval-then-verify pipeline in which Apertus is the only decision
+model, packaged for the organisers' evaluation contract. (2) A leakage-free split of the OST benchmark
+by vote date, with a single held-out test run. (3) Controlled comparisons of context size, evidence
+granularity, model size (8B vs 70B) and embedder cost, scored with the organisers' own scorer.
+(4) A public live demo and an explorer of all 976 test
+answers with their cited pages (\href{https://booklet-nli.pages.dev}{booklet-nli.pages.dev},
+Fig.~\ref{fig:demo}). (5) All predictions, run files and figures published for re-analysis.
 
-\textbf{What we found.}
-(1) \emph{Less context is more accurate}: 16 retrieved passages beat the whole booklet at a ninth of
-the tokens (Fig.~\ref{fig:context}). (2) \emph{Scored evidence rewards short quotes}: the same
-verdicts score 0.535, 0.616 or 0.758 depending only on how they are quoted (Fig.~\ref{fig:evid}a).
-(3) \emph{Under this scoring, the larger LLM is free and the larger embedder is not}: the 70B adds
-5--7 F1 points at equal tokens, because LLM latency is not charged, while embedders that retrieve
-better cost 25--60$\times$ the CPU time the clock does count (Fig.~\ref{fig:evid}b).
+\begin{figure}[h]
+\centering
+\begin{minipage}[c]{0.5\linewidth}
+\includegraphics[width=\linewidth]{fig-demo.png}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.47\linewidth}
+\caption{\textbf{The live demo} (\href{https://booklet-nli.pages.dev/demo/}{booklet-nli.pages.dev/demo}):
+a French claim against the German booklet of 9 June 2024. Apertus answers that the booklet
+\emph{supports} it and cites page 42, which can be checked in the official PDF. Anyone can pick a
+booklet, type a claim in German, French or Italian and get a verdict in about 5\,s; the companion site
+lists all 976 recorded test answers.}
+\label{fig:demo}
+\end{minipage}
+\end{figure}
 
-\section{Task, data and scoring}
+\section{Related work}
+NLI classifies a hypothesis as entailed, contradicted or neutral given a premise~\cite{bowman2015snli},
+across languages in XNLI~\cite{conneau2018xnli}; FEVER~\cite{thorne2018fever} verifies claims against
+retrieved evidence sentences. Our premise is a whole booklet (16--144 pages) in another language than the
+claim. We follow retrieval-augmented generation~\cite{lewis2020rag} with a multilingual sentence
+embedder~\cite{reimers2020}; layout-aware parsing (Docling~\cite{auer2024docling}) and visual page
+retrieval (ColPali~\cite{faysse2024colpali}) are alternatives we test in Appendix~\ref{app:visual}.
+
+\section{Task and data}
 \textbf{Task.} Document + claim $\rightarrow$ entailment / neutral / contradiction, judged against the
-booklet only, not real-world truth. All nine claim/booklet language pairs occur. The official
-evaluation runs our Docker image on a private set with two tasks: \emph{A}, booklet PDF + vote name
-+ claim; \emph{B}, a given reference passage + claim~\cite{starter,ostslides}.
+booklet only, not real-world truth. The official evaluation runs our Docker image on a private set
+with two tasks: \emph{A}, booklet PDF + vote name + claim; \emph{B}, a given reference passage +
+claim~\cite{starter,ostslides}. All nine claim/booklet language pairs occur.
+\textbf{Data.} The OST benchmark~\cite{ostdataset} has 1{,}488 pairs with approximately balanced
+labels, covering all nine language pairs (147--196 each); booklets come from the Federal Chancellery~\cite{booklets}. It ships without a split,
+so we split \emph{by vote date}, keeping the three language versions of a booklet on the same side:
+dev 6 dates / 512 pairs (all design choices), test 14 dates / 976 pairs (run once).
 
-\textbf{Data.} OST's benchmark~\cite{ostdataset} (1{,}488 pairs, balanced over labels and language
-pairs). It has no split, so we split \emph{by vote date}: the three language versions of a booklet
-are always on the same side. Dev: 6 dates, 512 pairs (all design choices); test: 14 dates, 976
-pairs, run once. Booklets come from the Federal Chancellery~\cite{booklets}.
+\section{Method}
+\textbf{Document processing.} PyMuPDF~\cite{pymupdf} extracts each page; words broken across lines are rejoined;
+text blocks are merged into passages of about 900 characters (195 of 7{,}610 longer, at most
+1{,}623) that never cross a page, each carrying
+its page number and PDF outline path (vote $\rightarrow$ part $\rightarrow$ subsection).
+\textbf{Retrieval.} \texttt{paraphrase-multilingual-MiniLM-L12-v2}~\cite{reimers2020,minilmcard}, run with
+fastembed~\cite{fastembed}, embeds claim
+and passages in one cross-lingual space, so a French claim retrieves German passages without
+translation; the 16 nearest passages are passed in document order.
+\textbf{Verification.} One Apertus call per case, temperature 0, constrained to a JSON schema
+\{\texttt{reason}, \texttt{evidence}, \texttt{label}\}. The prompt defines the three labels, names the
+vote, and treats a statement attributed to the wrong actor as a contradiction.
+\textbf{Evidence selection.} Up to five verbatim sentences with their page: the three closest to the
+claim from the passages Apertus cited, then two from the rest of its context.
+\textbf{Deployment.} The Docker image follows the evaluation contract (CPU only, no runtime
+downloads) and uses Apertus-v1.5-70B~\cite{apertus70b} when served, else the 8B~\cite{apertus8b}.
 
-\textbf{Scoring}~\cite{ostslides}. A submission is valid only if macro-F1 $\geq$ 0.60 (A) and
-$\geq$ 0.75 (B). Task A $=0.5\,$F1 $+\,0.2\,$evidence Hit@5 $+\,0.15\,$time $+\,0.15\,$tokens;
-task B $=0.7\,$F1 $+\,0.15\,$time $+\,0.15\,$tokens; final $=0.6A+0.4B$. Tokens are counted by the
-organisers' proxy; \emph{time} is wall-clock time minus the time with an LLM request in flight, so
-parsing and embedding count and Apertus latency does not. Both are relative to the best team.
-Evidence counts if a quote fuzzily lies inside the gold passage or contains it.
+\section{Experimental setup}
+\textbf{Metrics.} Macro-F1 over the three labels (primary); evidence Hit@5 with the organisers'
+matcher (a quote counts if it fuzzily lies inside the gold passage or contains it); input tokens per
+case; non-LLM processing time. 95\% intervals from 2{,}000 bootstrap resamples of claims.
+\textbf{Official scoring}~\cite{ostslides}. Valid only if macro-F1 $\geq$ 0.60 (A) and $\geq$ 0.75 (B; slide 16, while the starter's
+\texttt{evaluate.py} prints 0.70).
+Task A $=0.5\,$F1 $+\,0.2\,$Hit@5 $+\,0.15\,$time $+\,0.15\,$tokens; task B $=0.7\,$F1 $+\,0.15\,$time
+$+\,0.15\,$tokens; final $=0.6A+0.4B$; time is wall-clock minus time with an LLM request in flight,
+and both efficiency terms are relative to the best team.
+\textbf{Baselines.} Whole booklet in the prompt; $k=8$ passages; two alternative neural embedders and
+BM25 fusion.
 
-\section{System}
-\textbf{Passages.} PyMuPDF extracts each page; words broken across lines are rejoined; text blocks
-are merged into passages of $\leq$900 characters that never cross a page, each keeping its page
-and PDF outline path (vote $\rightarrow$ part $\rightarrow$ subsection).
-\textbf{Retrieval.} \texttt{paraphrase-multilingual-MiniLM-L12-v2}~\cite{reimers2020} (ONNX, CPU)
-embeds claim and passages in one cross-lingual space, so a French claim finds German passages
-without translation; the 16 nearest passages go to Apertus in document order.
-\textbf{Verdict.} One Apertus call per case, temperature 0, JSON schema
-\{\texttt{reason}, \texttt{evidence}, \texttt{label}\}; the prompt defines the three labels, names
-the vote, and treats a statement attributed to the wrong actor as a contradiction.
-\textbf{Evidence.} Up to five verbatim sentences with their page: the three closest to the claim
-from the passages Apertus cited, then two from the rest of its context.
-\textbf{Engineering for the contract.} Booklets are parsed and embedded lazily inside six worker
-threads (one PDF at a time), so this work overlaps other cases' Apertus calls; answers are written
-as they complete; a failing case is retried, then answered neutral, and the run always exits 0. The
-image lists the endpoint's models and prefers Apertus-v1.5-70B~\cite{apertus70b}, falling back to
-the 8B~\cite{apertus8b} if the 70B is not served. CI builds the amd64 image and runs it with the
-network off before every publish.
+\begin{table}[h]
+\centering\small
+\begin{tabular}{@{}L{0.18\linewidth}L{0.42\linewidth}L{0.33\linewidth}@{}}
+\toprule
+Component & Tool / model & Where it runs \\
+\midrule
+PDF parsing & PyMuPDF 1.28 & CPU, in the image \\
+Retrieval & paraphrase-multilingual-MiniLM-L12-v2 (ONNX, fastembed 0.9) & CPU, weights baked into the image \\
+Decision model & Apertus-v1.5-8B; Apertus-v1.5-70B (submitted default) & vLLM~\cite{kwon2023vllm}: 1$\times$L40S (8B), 2$\times$H200 (70B), Modal \\
+Scoring & organisers' \texttt{evaluate.py}~\cite{starter}, commit 5e69577 & unmodified \\
+Embedders compared & multilingual-e5-large~\cite{wang2024e5}, Qwen3-Embedding-0.6B~\cite{zhang2025qwen3emb}, BM25 + RRF~\cite{robertson2009bm25,cormack2009rrf} & 4 vCPU, retrieval only \\
+\bottomrule
+\end{tabular}
+\caption{Methods and tools. Versions are pinned in \texttt{uv.lock}; the vLLM image is pinned by digest.}
+\label{tab:tools}
+\end{table}
 
 \section{Results}
+\subsection{Main results}
 \begin{table}[h]
 \centering\small
 \begin{tabular}{@{}llccccc@{}}
 \toprule
 Split & Model & Task A F1 & Task B F1 & Evid.\ (A) & In tokens A / B & Out A \\
 \midrule
-Test, 976 (own scorer) & 8B & 0.891 {\scriptsize(0.871--0.909)} & -- & 0.716$^\dagger$ & 3{,}424 / -- & 86 \\
+Test, 976 (own scorer) & 8B & 0.891 {\scriptsize(0.869--0.913)$^\ddagger$} & -- & 0.716$^\dagger$ & 3{,}424 / -- & 86 \\
 Dev, 150/task (official) & 8B & 0.857 & 0.930 & 0.768 & 3{,}349 / 2{,}286 & 86 \\
-Dev, 150/task (official) & \textbf{70B}, run 1 & \textbf{0.925} & \textbf{0.979} & \textbf{0.808} & 3{,}349 / 2{,}286 & 92 \\
-Dev, 150/task (official) & \textbf{70B}, run 2 & \textbf{0.905} & \textbf{0.986} & \textbf{0.808} & 3{,}349 / 2{,}286 & 92 \\
+Dev, 150/task (official) & 70B, run 1 & \textbf{0.925} & 0.979 & \textbf{0.808} & 3{,}349 / 2{,}286 & 92 \\
+Dev, 150/task (official) & 70B, run 2 & 0.905 & \textbf{0.986} & \textbf{0.808} & 3{,}349 / 2{,}286 & 92 \\
 \bottomrule
 \end{tabular}
-\caption{\textbf{The 70B gains 5--7 points on the booklet task at identical input tokens.}
-``Official'': the organisers' \texttt{evaluate.py}~\cite{starter} on cases in their format, run in our
-Docker image on Modal. $^\dagger$Test evidence uses our own n-gram overlap measure, not the official
-matcher. Run 2 let the image choose the model itself. An identical 8B rerun differs by up to 0.027
-(\S\ref{sec:limits}). Files: \texttt{runs/test-rag-k16-n976/}, \texttt{runs/contract-dev-n150/}.}
+\caption{\textbf{Main results.} ``Official'': the organisers' scorer on cases in their format, run in
+our Docker image. $^\dagger$Test evidence uses our own n-gram overlap measure. $^\ddagger$Bootstrap over the 14 vote
+dates (claim-level: 0.871--0.909). A near-repeat of the 8B dev run (larger output cap) moved F1 by 0.027. Files: \texttt{runs/test-rag-k16-n976/}, \texttt{runs/contract-dev-n150/}.}
 \label{tab:main}
 \end{table}
+
+\textbf{RQ1, languages.} On test, cross-lingual pairs score 0.899 (n\,=\,641) and same-language pairs
+0.875 (n\,=\,335): no \emph{average} penalty. The average hides a weakness (Fig.~\ref{fig:errors}): on
+contradiction claims that mention an actor, the 8B errs in 14 of 107 cross-lingual cases against 2 of 41
+same-language ones (small numbers). Claims say ``the committee'', ``le comité'' or ``il comitato'', while
+the booklet names a specific body in another language (``comitati referendari'',
+``Initiativkomitee''); in 11 of the 14 the right passage was in context and the model answered
+\emph{neutral}. Reading these cases suggests that mapping actors across languages, rather than
+translation as such, is the open problem. A prompt glossary of actor names across the three languages did
+not fix it (actor claims 82/90 before and after with the 8B; 70B task B 0.958 against 0.979--0.986, at
++137 tokens), so it is not used.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{fig-errors.pdf}
+\caption{\textbf{Where the 8B fails}: all 106 test errors, sorted by keyword rules applied in order
+(\texttt{paper/figures.py}), per 100 claims of each language group. The categories describe the claim
+(e.g.\ it mentions an actor or a number), not a verified cause. Retrieval misses hit both groups equally;
+errors on actor-mentioning and number claims are more frequent across languages; over-inference
+(supporting or contradicting a claim the booklet does not settle) is more frequent within one language.}
+\label{fig:errors}
+\end{figure}
 
 \begin{figure}[h]
 \centering
@@ -128,94 +198,146 @@ matcher. Run 2 let the image choose the model itself. An identical 8B rerun diff
 \includegraphics[width=\linewidth]{fig-context.pdf}
 \end{minipage}\hfill
 \begin{minipage}[t]{0.5\linewidth}\vspace{4pt}
-\caption{\textbf{Reading less of the booklet is both cheaper and more accurate.} The same 60
-held-out test claims, Apertus-v1.5-8B. The whole booklet costs 9$\times$ the tokens and six of its
-60 answers never finish: the model lists passage numbers until the output cap. Retrieval leads by
-+0.127 counting those as neutral, +0.053 (CI $-$0.056 to +0.168) excluding them. Bars: 95\%
-bootstrap intervals over claims. Source: \texttt{paper/figures.py} on
-\texttt{runs/test-full-n60}, \texttt{runs/test-rag-k16-n976}.}
+\caption{\textbf{Higher measured F1 at a ninth of the input tokens} (RQ2). Same 60 held-out
+test claims, 8B. The whole booklet costs 9$\times$ the tokens and six of its answers never finish (the
+model lists passage numbers until the output cap); excluding those, retrieval still leads by +0.053
+(CI $-$0.056 to +0.168). Bars: 95\% bootstrap intervals. Source: \texttt{paper/figures.py}.}
 \label{fig:context}
 \end{minipage}
 \end{figure}
 
+\textbf{RQ2, context.} Sixteen retrieved passages beat the whole booklet at a ninth of the tokens
+(Fig.~\ref{fig:context}); on dev, $k=8$ scored 0.850 against 0.890 for $k=16$. With the 70B, $k=8$
+saves 45\% of tokens but cuts evidence Hit@5 from 0.828 to 0.677 (task-A-only run), so we keep $k=16$.
+Given the annotated passage instead (task B), the 8B scores 0.930 against 0.857: of its 21 task-A
+errors, 14 disappear, 7 remain and 3 new ones appear, so errors persist even with the reference text;
+separating retrieval, context interference and reasoning needs case-level analysis. Contradiction read as neutral is the main confusion (31 of 106 test
+errors); retrieval misses explain 26 of the 106.
+
 \begin{figure}[h]
 \centering
 \includegraphics[width=\linewidth]{fig-evidence-embedders.pdf}
-\caption{\textbf{(a) The scorer rewards short quotes; (b) better retrieval costs counted CPU time.}
-(a) Identical 8B verdicts on 99 non-neutral dev claims, quoted as whole pages, our passages, or
-sentences, scored by the official matcher: a gold passage often includes a heading that a page does
-not reproduce contiguously, so the page does not ``contain'' it. (b) Recall of the annotated passage
-in the top 16 (338 dev claims) against CPU seconds to embed one booklet on 4 vCPU:
-multilingual-e5-large~\cite{wang2024e5} and Qwen3-Embedding-0.6B~\cite{zhang2025qwen3emb} retrieve
-better but cost 83 and 192\,s per booklet, against 3\,s, time the official clock counts. Fusing BM25
-by reciprocal rank~\cite{robertson2009bm25,cormack2009rrf} did not help at $k=16$ (0.905 vs 0.911).
-Source: \texttt{modal/embed\_bench.py} $\rightarrow$ \texttt{runs/embed-bench-dev.json};
-\texttt{runs/contract-dev-n150/evidence-variants/}.}
+\caption{\textbf{(a) The scorer rewards short quotes (RQ3); (b) retrieval quality versus CPU cost.}
+(a) Three evidence configurations (8B, 99 non-neutral dev claims, official matcher); pages and
+passages share one run, sentences come from a second run. A gold passage often includes a heading
+that a page does not reproduce contiguously. (b) Recall of the
+annotated passage in the top 16 (338 dev claims) against CPU seconds per booklet on 4 vCPU. Sources:
+\texttt{runs/contract-dev-n150/evidence-variants/}, \texttt{runs/embed-bench-dev.json}.}
 \label{fig:evid}
 \end{figure}
 
-\textbf{Languages.} On test, cross-lingual pairs score 0.899 (n = 641) and same-language pairs
-0.875 (n = 335); booklet DE 0.866, FR 0.898, IT 0.908. We see no sign that translation is needed.
-\textbf{Errors.} Contradiction predicted as neutral is the main confusion (31 of 106 test errors).
-Retrieval misses explain only 26 of the 106: in 44 of the 70 claims whose annotated passage was
-not retrieved, the verdict was still correct from other passages. Given the annotated passage (task B), the 8B scores 0.930
-against 0.857 with retrieval: most remaining errors happen with the right text in hand.
-\textbf{Efficiency.} Task A uses 3{,}349 input tokens per case (task B 2{,}286, mostly the reference
-itself); the median Apertus response is 4.5\,s (8B, test). In a task-A-only container (70B, 150
-cases, 18 booklets), 33 of 386\,s had no request in flight: \textbf{0.22\,s per case}, including all
-parsing and embedding. Halving the context ($k=8$) saves 45\% of tokens but drops evidence from
-0.828 to 0.677 (F1 0.925 $\rightarrow$ 0.900); with other teams' token use unknown we keep $k=16$.
+\textbf{RQ3, evidence.} Three evidence configurations score 0.535 (whole pages), 0.616 (passages) and
+0.758 (sentences) under the official matcher (Fig.~\ref{fig:evid}a). The comparison is not fully
+controlled: the sentence configuration comes from a separate inference run (two task-A labels differ)
+and also adds sentences from uncited context.
+\textbf{Model size.} With identical prompts, retrieval and input tokens (output 92 against 86), the 70B
+gains 5--7 points on the booklet task and 5--6 on given passages, in two dev runs; held-out
+confirmation remains (Table~\ref{tab:main}).
+\textbf{Embedder cost.} Larger embedders retrieve better (recall@16 0.965 and 0.970 against 0.911) but
+need 83 and 192\,s of CPU per booklet against 3\,s; BM25 fusion did not help at $k=16$
+(Fig.~\ref{fig:evid}b). In a task-A-only container the submitted image spends 0.22\,s of non-LLM time
+per case.
 
-\section{What we learned}
-\begin{human}[Q4--Q8 --- the decisions, told by you]
-\emph{Draft, replace:} Our first instinct --- and that of another AI we asked --- was to cite whole
-pages, since a page ``contains'' the passage. Measuring with the organisers' matcher showed the
-opposite. The same happened with the embedder: the state-of-the-art models are better, and we kept
-the small one because the rules charge CPU time. And the night before the deadline we switched to
-the 70B, because under these rules a larger LLM costs nothing but its GPU bill. The common thread:
-read the scorer before trusting intuition.
-\end{human}
+\section{Discussion}\label{sec:learned}
+\textbf{What we learned.} On this benchmark Apertus works across the three languages without a
+translation step on average, but cross-lingual actor attribution remains a weak spot (RQ1). The bigger model is better on our dev runs, as expected. Errors remain even when the 8B
+has the annotated text in hand, which we think fine-tuning can address.
+The scorer, not intuition, decides what good evidence is: our first instinct, and that of another AI we
+asked, was to cite whole pages; measuring with the organisers' matcher showed that single sentences
+work best.
+\textbf{Hackathon scoring versus real use.} The scorer charges the LLM only for tokens (equal for 8B
+and 70B), not for waiting time, but charges CPU time; hence the 70B and the small embedder. A real
+service would differ: users wait for each answer and every 70B query costs GPU time (the 8B answers in
+a median 4.5\,s at 0.891 on test), while booklets could be embedded once ahead of time, which removes
+most of the cost of stronger embedders. Retrieving instead of reading everything holds in both settings;
+the evidence result is specific to the reference-matching metric.
+\textbf{Limitations.} A near-repeat of the 8B dev run moved macro-F1 by 0.027 (batched GPU inference
+is not bit-exact); decisions rest on 6 dev vote dates and the 70B result on dev runs only. Hit@5 is a
+proxy, and two of five quotes come from context the model did not cite (the demo shows only cited
+passages). Retrieval can pick the wrong vote in a multi-vote booklet, and PyMuPDF reads tables as lines.
 
-\section{Limitations and ethics}\label{sec:limits}
-\textbf{Noise.} An identical 8B rerun on dev moved macro-F1 by 0.027 (batched GPU inference is not
-bit-exact at temperature 0, and near-tied passages reorder); dev decisions rest on 6 vote dates, and
-differences below $\sim$0.03 are ties. The 70B result rests on two dev runs, not on the test split.
-\textbf{Evidence.} Hit@5 is a proxy; the last two quotes come from retrieved context the model did
-not cite (the demo shows only cited passages). \textbf{Scope.} One booklet may cover several votes;
-retrieval can pick the wrong one. \textbf{Ethics.} A verdict says what the booklet states, not
-whether a claim is true or how to vote; it is a model prediction to check against the cited page,
-not political advice. No personal data is processed.
+\section{Ethics, use of AI and reproducibility}
+\textbf{Ethics.} A verdict states what the booklet says, not whether a claim is true or how to vote;
+it is a model prediction to check against the cited page, not political advice. The benchmark contains no personal data; the live demo processes visitor IP
+addresses only to enforce daily rate limits and does not store claims.
+\textbf{Use of AI.} Apertus-v1.5 predicts labels and cites passages; MiniLM ranks passages and
+quotations. Development used Claude Code (Anthropic, Claude Opus 5.5), which implemented the author's
+ideas in code, ran the experiments on Modal and drafted documentation under the author's direction;
+read-only reviews came from Codex CLI (OpenAI, five), Grok (xAI, two) and one further AI review. Every
+finding was checked against the code; scores, token counts and figures are recomputed from \texttt{runs/}.
+\textbf{Reproducibility.} Code, run files and all predictions are in the repository (Apache-2.0);
+dataset revision \texttt{fc2b276}; temperature 0, seed 0. Every experiment, including rejected ones
+(prompt changes, parser v4, vote routing, a $k$\,=\,8$\rightarrow$16 cascade), is documented in the
+archival \texttt{technical\_report.md}.
 
-\section{Use of AI}
-\begin{human}[Q12 --- confirm or correct this list]
-\small
-\begin{tabular}{@{}p{0.25\linewidth}p{0.67\linewidth}@{}}
-Apertus-v1.5-8B / 70B & the only model in the system that decides labels and cites evidence \\
-MiniLM (multilingual) & passage retrieval only; e5-large and Qwen3-Embedding were benchmarked, not used \\
-Claude Code (Anthropic) & wrote most of the code and these documents under the author's direction; ran experiments on Modal \\
-Codex CLI (OpenAI) & five read-only reviews (12 Oct twice, 13 Oct, 15 Oct twice); every finding checked against the code before acting \\
-Grok (xAI) & two read-only reviews of data and results (12 Oct) \\
-\end{tabular}
-\end{human}
-All numbers in this report are recomputed from committed run files; no AI-generated number entered
-the report without that check.
+\section{Conclusion and future work}\label{sec:future}
+Apertus checks claims against the official booklet across German, French and Italian, at a ninth of
+the whole-booklet tokens, and shows the page that settles them. Next: test many more claims and all
+language combinations; fine-tune by distilling the 70B into the 8B (teacher--student) or with a LoRA
+adapter, on booklets outside the benchmark and split by vote date; add an actor-aware verification step (a
+prompt glossary alone did not help), tested on minimal pairs that change only the speaker or a number; and move retrieval to page images: in a first test, ColQwen2 page retrieval finds the
+gold page in the top~5 for 93.5\% of dev claims against 71.3\% for our text pipeline
+(Appendix~\ref{app:visual}). Beyond the benchmark, the same
+approach can serve the many voters who never read the booklet, answering ``what does this proposal
+actually say about X?'' with the cited page, ground opinion surveys and political barometers in the
+official text, and extend to cantonal and communal votes and to other countries, for example Germany.
 
-\section{Reproducibility}
-Code, run files and every prediction: the repository above (Apache-2.0); dataset pinned to revision
-\texttt{fc2b276}; temperature 0, seed 0. Apertus served with vLLM~\cite{kwon2023vllm} on Modal (8B: one
-L40S; 70B: two H200, tensor parallel). Official contract:
-\begin{center}\small\texttt{docker run -e BASE\_URL -e API\_KEY -v <cases>:/data:ro -v <out>:/output <image>}\\
-\texttt{--input /data/cases.jsonl --output /output/predictions.jsonl}\end{center}
-Every experiment, including rejected ones
-(prompt changes, parser v4, vote routing, a k=8$\rightarrow$16 cascade), is documented in
-\texttt{technical\_report.md}, the archival long version.
-
-\begin{human}[Q10, Q11 --- next step and the sentence to remember]
-\emph{Draft:} Next, an actor-aware verifier that states who claims what before the label, tested on a
-challenge set where only the speaker, number or negation changes.
-\end{human}
+\medskip\noindent\emph{A voter can only decide well if a claim can be traced to the page that settles
+it; Apertus does that across German, French and Italian.}
 
 \small
 \bibliographystyle{unsrtnat}
 \bibliography{refs}
+\normalsize
+
+\appendix
+\section{Example cases}\label{app:cases}
+\begin{table}[H]
+\centering\small
+\begin{tabular}{@{}L{0.33\linewidth}L{0.38\linewidth}L{0.22\linewidth}@{}}
+\toprule
+Claim & What the booklet says & Verdict \\
+\midrule
+\emph{FR claim, DE booklet:} ``\ldots s'applique aux entreprises dont le chiffre d'affaires annuel
+consolidé atteint \textbf{500 millions} d'euros.'' &
+p.\,21: ``\ldots einen konsolidierten jährlichen Umsatz von \textbf{750 Millionen} Euro erreicht.'' &
+\textbf{contradicts} (8B): a changed number \\[3pt]
+\emph{FR claim, IT booklet:} ``\textbf{Le Conseil fédéral} préconise le rejet de la loi \ldots,
+estimant que les médias ne sont pas indispensables à la démocratie directe.'' &
+p.\,55: ``La nostra democrazia diretta non può fare a meno dei media.'' (Federal Council and
+Parliament recommend yes) &
+\textbf{contradicts} (8B): the Federal Council recommends acceptance and says direct democracy needs media \\[3pt]
+\emph{FR claim, IT booklet:} ``\ldots la présente loi prend effet \textbf{immédiatement} après
+l'expiration infructueuse du délai référendaire \ldots'' &
+p.\,70: ``La presente legge entra in vigore il \textbf{1\textsuperscript{o} gennaio del sesto anno successivo} alla
+decorrenza infruttuosa del termine di referendum \ldots'' &
+8B: supports (wrong); \textbf{70B: contradicts} in both runs: a legal qualification \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{A changed number, a wrong actor and a legal qualification}, each across languages.
+Test claims \#1159 and \#1277; dev case \texttt{v1.1-row-1174-A}. Quotes verbatim, shortened with ``\ldots''.}
+\label{tab:cases}
+\end{table}
+
+\section{Layout-aware parsing and visual page retrieval}\label{app:visual}
+\begin{table}[H]
+\centering\small
+\begin{tabular}{@{}lccccl@{}}
+\toprule
+Method (338 dev claims, 18 booklets) & Hit@1 & Hit@3 & Hit@5 & Recall@16 & Cost per booklet \\
+\midrule
+PyMuPDF passages + MiniLM (submitted) & 0.317 & 0.586 & 0.713 & 0.911 & 3\,s CPU \\
+Docling items + MiniLM & -- & -- & -- & 0.923 & 45\,s CPU + 3\,s \\
+ColQwen2 over page images & \textbf{0.568} & \textbf{0.849} & \textbf{0.935} & -- & 5.3\,s GPU (L40S) \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Visual page retrieval finds the evidence page far more often.} Hit@$k$: a gold page
+among the top $k$ pages (MiniLM scores a page by its best passage); Recall@16: the annotated passage
+among the top 16 chunks. ColQwen2~\cite{faysse2024colpali} (\texttt{vidore/colqwen2-v1.0},
+colpali-engine 0.3.18, 110\,dpi); Docling~\cite{auer2024docling} 2.135, no OCR. One run each; gold pages
+are defined from PyMuPDF passages. It needs a GPU at query time, which the official run does not
+allow, so it is future work. Files: \texttt{runs/visual-bench-dev.json}, \texttt{runs/docling-bench-dev.json}.}
+\label{tab:visual}
+\end{table}
+
 \end{document}

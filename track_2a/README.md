@@ -1,4 +1,7 @@
-# Booklet NLI: claim checking over Swiss voting booklets with Apertus
+# Büchli: claim checking over Swiss voting booklets with Apertus
+
+*Büchli* is what the Swiss call the voting booklet (*Abstimmungsbüchli*) that reaches every household
+before a federal vote. The Python package and CLI keep their technical name `booklet-nli`.
 
 **Hack Apertus Online 2026, Track 2A, OST challenge:** *Multilingual Natural Language Inference
 over Swiss Official Voting Booklets.*

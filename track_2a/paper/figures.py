@@ -102,7 +102,7 @@ def fig_evidence_and_embedders():
     a.set_yticks(list(y), [label for label, _, _ in hits])
     a.set_xlim(0, 1)
     a.set_xlabel("Evidence Hit@5 (organisers' matcher)")
-    a.set_title("(a) Same verdicts, quoted three ways", loc="left")
+    a.set_title("(a) Three evidence configurations", loc="left")
     a.grid(axis="y", visible=False)
 
     for r in bench:
@@ -129,6 +129,59 @@ def fig_evidence_and_embedders():
     fig.savefig(OUT / "fig-evidence-embedders.pdf")
 
 
+ERROR_CATEGORIES = ["retrieval miss", "actor-mentioning claim", "claim with a number", "negation",
+                    "other reasoning", "over-inference (gold neutral)"]
+
+
+def error_category(p: dict, claim: str) -> str:
+    """First matching rule; transparent so the taxonomy can be audited (no model judges here)."""
+    import re
+    if p["gold"] != 1 and not p["context_hit"]:
+        return "retrieval miss"
+    if p["gold"] == 1:
+        return "over-inference (gold neutral)"
+    if re.search(r"(?i)komitee|comit[ée]|comitato|bundesrat|conseil f[ée]d[ée]ral|consiglio federale"
+                 r"|parlament|parlement|parlamento", claim):
+        return "actor-mentioning claim"
+    if re.search(r"\d", claim):
+        return "claim with a number"
+    if re.search(r"(?i)\b(nicht|kein\w*|nie|ne|pas|aucun\w*|jamais|non|nessun\w*|mai)\b", claim):
+        return "negation"
+    return "other reasoning"
+
+
+def fig_errors():
+    """Where the 8B fails on the 976 test claims, per 100 claims of each language group."""
+    from collections import Counter
+
+    from booklet_nli.data import load_rows
+
+    claims = {r["id"]: r["claim"] for r in load_rows()}
+    preds = list(rows(RUNS / "test-rag-k16-n976/predictions.jsonl").values())
+    cross = lambda p: p["claim_language"] != p["reference_language"]
+    size = Counter(cross(p) for p in preds)
+    errs = Counter((error_category(p, claims[p["id"]]), cross(p)) for p in preds if p["gold"] != p["pred"])
+    fig, ax = plt.subplots(figsize=(6.9, 2.3))
+    y = list(range(len(ERROR_CATEGORIES)))[::-1]
+    h = 0.36
+    for k, (is_cross, color, label) in enumerate(((False, BLUE, f"same language (n = {size[False]})"),
+                                                   (True, ORANGE, f"cross-lingual (n = {size[True]})"))):
+        vals = [100 * errs[(c, is_cross)] / size[is_cross] for c in ERROR_CATEGORIES]
+        pos = [yy + (h / 2 if k == 0 else -h / 2) for yy in y]
+        ax.barh(pos, vals, height=h, color=color, label=label, edgecolor="white", linewidth=1)
+        for yy, v, c in zip(pos, vals, ERROR_CATEGORIES):
+            ax.text(v + 0.05, yy, f"{v:.1f}  ({errs[(c, is_cross)]})", va="center", fontsize=7, color=INK)
+            print(f"errors: {c} {'cross' if is_cross else 'same'}: {errs[(c, is_cross)]} = {v:.1f}/100")
+    ax.set_yticks(y, ERROR_CATEGORIES)
+    ax.set_xlabel("Errors per 100 claims of the group (8B, test split; count in brackets)")
+    ax.grid(axis="y", visible=False)
+    ax.set_xlim(0, 4.6)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2, fontsize=7.5)
+    fig.tight_layout()
+    fig.savefig(OUT / "fig-errors.pdf")
+
+
 if __name__ == "__main__":
     fig_context()
     fig_evidence_and_embedders()
+    fig_errors()

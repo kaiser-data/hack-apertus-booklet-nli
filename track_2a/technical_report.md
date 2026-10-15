@@ -1,4 +1,7 @@
-# Technical report: Booklet NLI, claim checking over Swiss voting booklets with Apertus
+# Technical report: Büchli, claim checking over Swiss voting booklets with Apertus
+
+> The submitted report, `kaiser-data_Report.pdf`, is built from `paper/report.tex` (`make report`).
+> This file is the archival long version with every experiment, including the rejected ones.
 
 - **Track:** Track 2A, OST challenge: *Multilingual Natural Language Inference over Swiss Official
   Voting Booklets*
@@ -258,6 +261,12 @@ scored with the starter's `evaluate.py`; the final row ran the Docker image itse
   0.828, 3,349 tokens; k = 8 F1 0.900, evidence 0.677, 1,827 tokens. The token saving pays off only
   if other teams use more than ~1,500 tokens per case; the evidence loss is certain. The same run
   measured 0.22 s of non-LLM time per case (33 of 386 s), the honest figure for an A-only container.
+- **Cross-lingual actor glossary, rejected.** An optional prompt section (`--actor-glossary`,
+  `nli.py::ACTOR_GLOSSARY`) mapping Bundesrat/Conseil fédéral/Consiglio federale and the initiative and
+  referendum committees across languages, aimed at the largest cross-lingual error class. Dev, 150
+  claims per task: 8B task A 0.857 → 0.875, task B 0.930 → 0.930, actor claims 82/90 → 82/90; 70B task A
+  0.920 (baseline runs 0.905–0.925), task B 0.958 (baseline 0.979–0.986, 0 fixed, 3 broken); +137 input
+  tokens per case. Not adopted. Files: `runs/contract-dev-n150/predictions-gloss-*.jsonl`.
 - **A cascade, rejected.** k = 8 first, re-asking with k = 16 only when the answer is neutral,
   simulated on the §5.2 runs: macro-F1 0.877 vs 0.890 for k = 16 alone, saving 2 % of tokens.
 

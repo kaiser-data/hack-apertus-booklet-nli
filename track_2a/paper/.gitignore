@@ -1,3 +1,7 @@
 report.pdf
 page-*.png
-fig-*.png
+fig-context.png
+fig-errors.png
+fig-evidence-embedders.png
+*.aux
+*.log

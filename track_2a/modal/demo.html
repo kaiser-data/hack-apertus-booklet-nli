@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Booklet NLI live</title>
+<title>Büchli live</title>
 <style>
 :root {
   color-scheme: light;
@@ -63,7 +63,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--text-muted); }
 </head>
 <body>
 <main>
-  <h1>Check a claim against a Swiss voting booklet</h1>
+  <h1>Büchli: check a claim against the Swiss voting booklet</h1>
   <p class="lede">Pick an official booklet (German, French or Italian) and write a claim in any of the three languages.
   Apertus-v1.5-8B reads the 16 passages closest to the claim and says whether the booklet <b>supports</b> it,
   <b>contradicts</b> it or <b>doesn't settle</b> it, with the passages it relied on. This is the exact setup that scored
@@ -128,6 +128,9 @@ async function poll() {
 async function check() {
   const b = current(), claim = $("claim").value.trim();
   if (!b || !claim) return;
+  // The GPU may have gone back to sleep since the last check: confirm before sending.
+  try { ready = (await (await fetch("/api/health")).json()).ready; } catch { ready = false; }
+  if (!ready) { setStatus(); setTimeout(poll, 10000); return; }
   busy = true; setStatus();
   $("out").innerHTML = `<div class="card status">Reading the booklet and asking Apertus…</div>`;
   try {

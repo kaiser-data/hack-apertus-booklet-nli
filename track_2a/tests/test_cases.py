@@ -172,3 +172,14 @@ def test_listing_with_suffixed_ids_still_matches_and_keeps_fallbacks():
     assert llm.pick(["swiss-ai/Apertus-v1.5-70B", "swiss-ai/Apertus-v1.5-8B"]) == (
         "swiss-ai/Apertus-v1.5-70B-Instruct")
     assert llm._fallbacks == ["swiss-ai/Apertus-v1.5-8B"]  # not listed, still tried last
+
+
+def test_a_neutral_answer_still_quotes_the_best_passage(tmp_path, monkeypatch):
+    passages = [Passage(0, 3, "", "a"), Passage(1, 7, "", "b")]
+    monkeypatch.setattr(cases, "extract_passages", lambda path: passages)
+    monkeypatch.setattr(cases, "rank", lambda claim, ps, emb: [ps[1], ps[0]])
+    monkeypatch.setattr(cases, "embed_scores", lambda claim, texts, emb: [1.0] * len(texts))
+    llm = StubLLM('{"reason": "r", "evidence": [], "label": "neutral"}')
+    r = cases.answer(llm, _case(booklet={"path": "b.pdf", "language": "de"}), tmp_path, 16, "e",
+                     use_vote=False)
+    assert r["label"] == 1 and r["evidence"][0] == {"page": 7, "text": "b"}

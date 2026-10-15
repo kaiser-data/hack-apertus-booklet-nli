@@ -1,0 +1,149 @@
+{
+ "embedder": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+ "claims": 338,
+ "booklets": 18,
+ "docling_version": "2.135.0",
+ "cpu": "Modal 4 vCPU, 16 GB, no OCR, table structure on",
+ "convert_s_per_booklet": 45.0,
+ "convert_s_total": 810.3,
+ "pages": 1128,
+ "init_s_mean": 9.4,
+ "hybrid_errors": [],
+ "methods": {
+  "pymupdf": {
+   "chunks": 2418,
+   "mean_chars": 619,
+   "any_chunk_overlaps": 1.0,
+   "recall@8": 0.7692,
+   "recall@16": 0.9112,
+   "embed_s_per_booklet": 3.1
+  },
+  "docling_items": {
+   "chunks": 2908,
+   "mean_chars": 605,
+   "any_chunk_overlaps": 1.0,
+   "recall@8": 0.8787,
+   "recall@16": 0.9231,
+   "embed_s_per_booklet": 3.5
+  },
+  "docling_hybrid": {
+   "chunks": 3423,
+   "mean_chars": 512,
+   "any_chunk_overlaps": 1.0,
+   "recall@8": 0.8462,
+   "recall@16": 0.9024,
+   "embed_s_per_booklet": 3.9
+  }
+ },
+ "failed": [],
+ "per_booklet": [
+  {
+   "url": "https://www.bk.admin.ch/dam/de/sd-web/6DaWglL-N7NM/2025-09-28_erlaeuterungen_des_bundesrates.pdf",
+   "pages": 48,
+   "init_s": 9.2,
+   "convert_s": 42.5
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/de/sd-web/MDRXrtFaVPNG/2026-03-08_erlaeuterungen_des_bundesrates.pdf",
+   "pages": 72,
+   "init_s": 11.4,
+   "convert_s": 53.5
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/de/sd-web/PCWaDg8-GOcJ/2022-05-15_erlaeuterungen_des_bundesrates.pdf",
+   "pages": 56,
+   "init_s": 8.2,
+   "convert_s": 37.2
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/de/sd-web/SwAIDvDocLte/2022-09-25_erlaeuterungen_des_bundesrates.pdf",
+   "pages": 80,
+   "init_s": 8.9,
+   "convert_s": 55.7
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/de/sd-web/XuiMCko39BzI/2020-09-27_erlaeuterungen_des_bundesrates.pdf",
+   "pages": 88,
+   "init_s": 8.9,
+   "convert_s": 78.8
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/de/sd-web/x6Qn59zt63F7/2025-11-30_erlaeuterungen_des_bundesrates.pdf",
+   "pages": 32,
+   "init_s": 9.1,
+   "convert_s": 26.4
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/fr/sd-web/6DaWglL-N7NM/2025-09-28_explications_du_conseil_federal.pdf",
+   "pages": 48,
+   "init_s": 9.2,
+   "convert_s": 36.8
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/fr/sd-web/MDRXrtFaVPNG/2026-03-08_explications_du_conseil_federal.pdf",
+   "pages": 72,
+   "init_s": 7.7,
+   "convert_s": 42.6
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/fr/sd-web/PCWaDg8-GOcJ/2022-05-15_explications_du_conseil_federal.pdf",
+   "pages": 56,
+   "init_s": 9.9,
+   "convert_s": 39.9
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/fr/sd-web/SwAIDvDocLte/2022-09-25_explications_du_conseil_federal.pdf",
+   "pages": 80,
+   "init_s": 12.6,
+   "convert_s": 53.7
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/fr/sd-web/XuiMCko39BzI/2020-09-27_explications_du_conseil_federal.pdf",
+   "pages": 88,
+   "init_s": 15.7,
+   "convert_s": 76.0
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/fr/sd-web/x6Qn59zt63F7/2025-11-30_explications_du_conseil_federal.pdf",
+   "pages": 32,
+   "init_s": 7.4,
+   "convert_s": 19.6
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/it/sd-web/6DaWglL-N7NM/2025-09-28_spiegazioni_del_consigliofederale.pdf",
+   "pages": 48,
+   "init_s": 6.9,
+   "convert_s": 37.5
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/it/sd-web/MDRXrtFaVPNG/2026-03-08_spiegazioni_del_consigliofederale.pdf",
+   "pages": 72,
+   "init_s": 7.8,
+   "convert_s": 47.6
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/it/sd-web/PCWaDg8-GOcJ/2022-05-15_spiegazioni_del_consigliofederale.pdf",
+   "pages": 56,
+   "init_s": 9.5,
+   "convert_s": 33.4
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/it/sd-web/SwAIDvDocLte/2022-09-25_spiegazioni_del_consigliofederale.pdf",
+   "pages": 80,
+   "init_s": 10.1,
+   "convert_s": 53.6
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/it/sd-web/XuiMCko39BzI/2020-09-27_spiegazioni_del_consigliofederale.pdf",
+   "pages": 88,
+   "init_s": 7.6,
+   "convert_s": 57.1
+  },
+  {
+   "url": "https://www.bk.admin.ch/dam/it/sd-web/x6Qn59zt63F7/2025-11-30_spiegazioni_del_consigliofederale.pdf",
+   "pages": 32,
+   "init_s": 8.4,
+   "convert_s": 18.4
+  }
+ ]
+}

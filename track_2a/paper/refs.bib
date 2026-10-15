@@ -27,15 +27,15 @@
   title        = {{hackapertus-starter: CLI} contract, \texttt{prepare\_cases.py} and \texttt{evaluate.py}},
   year         = {2026},
   howpublished = {\url{https://gitlab.com/ifsoftware/hackapertus-starter}},
-  note         = {Commit 5e69577; official scoring rules used for all \S4 dev scores}
+  note         = {Commit 5e69577; \texttt{evaluate.py} used unmodified for the official-format dev scores}
 }
 
 @misc{ostslides,
   author       = {Purandare, Mitra and Kuganathan, Abinas},
   title        = {{HackApertus Track 2A: Q\&A} -- Evaluation, starter repo and demo app},
   year         = {2026},
-  howpublished = {Slides, 8 October 2026, Hack Apertus Getting Started Guide},
-  note         = {Source of the scoring weights and the processing-time definition}
+  howpublished = {Slides, 8 October 2026, Hack Apertus Getting Started Guide (\url{https://hackapertus.notion.site/track-2a-ost})},
+  note         = {Slides 16--18: validity thresholds, scoring weights, processing-time definition, evidence matching}
 }
 
 @misc{booklets,
@@ -88,4 +88,69 @@
   number  = {4},
   pages   = {333--389},
   year    = {2009}
+}
+
+@inproceedings{bowman2015snli,
+  author    = {Bowman, Samuel R. and Angeli, Gabor and Potts, Christopher and Manning, Christopher D.},
+  title     = {A large annotated corpus for learning natural language inference},
+  booktitle = {Proceedings of EMNLP},
+  year      = {2015}
+}
+
+@inproceedings{conneau2018xnli,
+  author    = {Conneau, Alexis and Rinott, Ruty and Lample, Guillaume and Williams, Adina and Bowman, Samuel R. and Schwenk, Holger and Stoyanov, Veselin},
+  title     = {{XNLI}: Evaluating Cross-lingual Sentence Representations},
+  booktitle = {Proceedings of EMNLP},
+  year      = {2018}
+}
+
+@inproceedings{thorne2018fever,
+  author    = {Thorne, James and Vlachos, Andreas and Christodoulopoulos, Christos and Mittal, Arpit},
+  title     = {{FEVER}: a Large-scale Dataset for Fact Extraction and {VERification}},
+  booktitle = {Proceedings of NAACL-HLT},
+  year      = {2018}
+}
+
+@inproceedings{lewis2020rag,
+  author    = {Lewis, Patrick and Perez, Ethan and Piktus, Aleksandra and Petroni, Fabio and Karpukhin, Vladimir and Goyal, Naman and K{\"u}ttler, Heinrich and Lewis, Mike and Yih, Wen-tau and Rockt{\"a}schel, Tim and Riedel, Sebastian and Kiela, Douwe},
+  title     = {Retrieval-Augmented Generation for Knowledge-Intensive {NLP} Tasks},
+  booktitle = {Advances in NeurIPS},
+  year      = {2020}
+}
+
+@article{faysse2024colpali,
+  author  = {Faysse, Manuel and Sibille, Hugues and Wu, Tony and Omrani, Bilel and Viaud, Gautier and Hudelot, C{\'e}line and Colombo, Pierre},
+  title   = {{ColPali}: Efficient Document Retrieval with Vision Language Models},
+  journal = {arXiv:2407.01449},
+  year    = {2024}
+}
+
+@article{auer2024docling,
+  author  = {Auer, Christoph and others},
+  title   = {Docling Technical Report},
+  journal = {arXiv:2408.09869},
+  year    = {2024}
+}
+
+@misc{pymupdf,
+  author       = {{Artifex Software}},
+  title        = {{PyMuPDF}},
+  year         = {2026},
+  howpublished = {\url{https://github.com/pymupdf/PyMuPDF}},
+  note         = {Version 1.28; AGPL-3.0 or commercial licence}
+}
+
+@misc{fastembed,
+  author       = {{Qdrant}},
+  title        = {{FastEmbed}: lightweight embedding generation},
+  year         = {2026},
+  howpublished = {\url{https://github.com/qdrant/fastembed}},
+  note         = {Version 0.9, ONNX runtime on CPU}
+}
+
+@misc{minilmcard,
+  author       = {{Sentence-Transformers}},
+  title        = {{paraphrase-multilingual-MiniLM-L12-v2}},
+  howpublished = {\url{https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}},
+  note         = {Model card; 128-token input limit}
 }
