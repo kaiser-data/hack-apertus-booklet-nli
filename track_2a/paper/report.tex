@@ -97,9 +97,9 @@ retrieval (ColPali~\cite{faysse2024colpali}) are alternatives we test in Appendi
 \textbf{Task.} Document + claim $\rightarrow$ entailment / neutral / contradiction, judged against the
 booklet only, not real-world truth. The official evaluation runs our Docker image on a private set
 with two tasks: \emph{A}, booklet PDF + vote name + claim; \emph{B}, a given reference passage +
-claim~\cite{starter,ostslides}. All nine claim/booklet language pairs occur.
+claim~\cite{starter,ostslides}. All $3\times3$ combinations of claim and booklet language (DE, FR, IT) occur.
 \textbf{Data.} The OST benchmark~\cite{ostdataset} has 1{,}488 pairs with approximately balanced
-labels, covering all nine language pairs (147--196 each); booklets come from the Federal Chancellery~\cite{booklets}. It ships without a split,
+labels, covering all $3\times3$ claim/booklet language combinations (147--196 each); booklets come from the Federal Chancellery~\cite{booklets}. It ships without a split,
 so we split \emph{by vote date}, keeping the three language versions of a booklet on the same side:
 dev 6 dates / 512 pairs (all design choices), test 14 dates / 976 pairs (run once).
 
@@ -276,11 +276,11 @@ votes it has never seen. The most useful lessons were less about the model than 
 reading less of the booklet works better than reading all of it, short quotes are better evidence than
 whole pages, and the hardest part is not translation but knowing who said what.
 
-\textbf{RQ1, languages.} All nine language pairs work without translation (cross-lingual 0.899,
+\textbf{RQ1, languages.} All $3\times3$ combinations of the three languages work without translation (cross-lingual 0.899,
 same-language 0.875); actor-mentioning contradictions fail more often across languages (14 of 107
 against 2 of 41), and a prompt glossary of actor names did not fix it.
 \textbf{RQ2, context.} Reading the 16 retrieved passages instead of the whole booklet is both more
-accurate (0.861 against 0.735 on the same 60 claims) and nine times cheaper (3{,}446 against 31{,}402
+accurate (0.861 against 0.735 on the same 60 claims) and uses 89\% fewer input tokens (3{,}446 against 31{,}402
 input tokens). The 8B reaches macro-F1 0.891 on 976 held-out claims, and the 70B adds 5--7 points on
 dev at identical input tokens. Only 26 of the 106 test errors are retrieval misses; the rest are decisions on retrieved text,
 which we think fine-tuning can address.

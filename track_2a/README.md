@@ -163,7 +163,7 @@ Any OpenAI-compatible endpoint works, configured through `LLM_NAME`, `LLM_BASE_U
 ## Data
 
 [`OSTswiss/MNLIoverSwissVotingBooklets`](https://huggingface.co/datasets/OSTswiss/MNLIoverSwissVotingBooklets)
-(MIT): 1,488 claim/booklet pairs, balanced over labels and over all nine claim/booklet language
+(MIT): 1,488 claim/booklet pairs, balanced over labels and over all 3 × 3 claim/booklet language
 pairs. It ships without a split, so we split **by vote date**: the German, French and Italian
 booklets of one vote are always on the same side. That gives a dev split (6 vote dates, 512
 pairs) for prompt and retrieval choices, and a test split (14 vote dates, 976 pairs) for
